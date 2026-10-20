@@ -1,0 +1,509 @@
+WEBVTT
+
+00:00:02.900 --> 00:00:07.716
+Welcome to CSC4801, AI-assisted Software Engineering.
+
+00:00:07.716 --> 00:00:11.260
+This is Lecture Three: Advanced Agents.
+
+00:00:12.033 --> 00:00:15.209
+Last time, we gave a language model a body.
+
+00:00:15.209 --> 00:00:21.193
+With a harness around it, the model can look at files, act on them, and run code.
+
+00:00:21.543 --> 00:00:23.471
+Here is the loop we built.
+
+00:00:23.471 --> 00:00:33.183
+Prepare the context, call the LLM, run the tools it asks for, add the results, and go around again, until no more tools are needed.
+
+00:00:33.533 --> 00:00:36.983
+This loop works, but it has several problems.
+
+00:00:36.983 --> 00:00:39.053
+Today we fix three of them.
+
+00:00:39.403 --> 00:00:43.925
+First, context management: what goes into each call.
+
+00:00:43.925 --> 00:00:51.578
+Second, retrieval-augmented generation: how an agent remembers things for the long term.
+
+00:00:51.578 --> 00:00:56.883
+Third, subagents: how to split one job across several agents.
+
+00:00:57.483 --> 00:01:01.203
+For each fix, watch where it plugs into the loop.
+
+00:01:02.000 --> 00:01:04.341
+Let's start with context.
+
+00:01:04.341 --> 00:01:09.960
+An LLM is stateless. It remembers nothing between two calls.
+
+00:01:10.560 --> 00:01:16.879
+So every time the agent calls the model, it sends all the historical messages again:
+
+00:01:16.879 --> 00:01:21.920
+the system prompt, the request, every reply, and every tool result.
+
+00:01:22.270 --> 00:01:25.672
+That makes the loop very hungry for tokens.
+
+00:01:25.672 --> 00:01:33.190
+Read 10 files, run the tests 3 times, and edit 5 times, and you can easily pass 100,000 tokens.
+
+00:01:33.540 --> 00:01:37.279
+And each new call carries everything that came before it.
+
+00:01:37.279 --> 00:01:40.100
+The context keeps growing, turn after turn.
+
+00:01:40.900 --> 00:01:41.509
+But wait.
+
+00:01:41.509 --> 00:01:45.980
+Context windows keep getting bigger. Why not just send everything?
+
+00:01:46.530 --> 00:01:49.393
+It's true that windows have grown fast.
+
+00:01:49.393 --> 00:01:59.160
+Back in 2024, Google's Gemini 1.5 could almost fit the whole Harry Potter and Lord of the Rings series in its 2 million token window.
+
+00:01:59.160 --> 00:02:01.730
+Today, some models offer even more.
+
+00:02:02.080 --> 00:02:04.365
+But a long context may fail.
+
+00:02:04.365 --> 00:02:12.120
+A benchmark called RULER found that almost all models lose accuracy as the context gets longer.
+
+00:02:12.720 --> 00:02:16.143
+Another study is called Lost in the Conversation.
+
+00:02:16.143 --> 00:02:25.435
+When a task arrives piece by piece over many turns, models jump to early answers, make wrong assumptions, and then get stuck on them.
+
+00:02:25.435 --> 00:02:28.160
+Their results become far less reliable.
+
+00:02:28.510 --> 00:02:30.646
+So the lesson is clear.
+
+00:02:30.646 --> 00:02:34.270
+Historical messages need to be concise.
+
+00:02:34.870 --> 00:02:38.442
+In fact, a lot loads before you even type anything:
+
+00:02:38.442 --> 00:02:43.906
+the system prompt, your CLAUDE.md file, memory, skills, and tool descriptions.
+
+00:02:43.906 --> 00:02:48.390
+Claude Code has a page that shows exactly what fills its window.
+
+00:02:49.167 --> 00:02:50.823
+But there is a trade-off.
+
+00:02:50.823 --> 00:02:55.195
+Shorter context is good, but we also want to use the prompt cache.
+
+00:02:55.195 --> 00:02:57.447
+These two pull against each other.
+
+00:02:57.797 --> 00:03:00.084
+Here's how the prompt cache works.
+
+00:03:00.084 --> 00:03:03.718
+Call one sends the user's message: add error handling.
+
+00:03:03.718 --> 00:03:09.437
+Call two sends that same message, plus the assistant's reply about missing arguments.
+
+00:03:09.787 --> 00:03:14.959
+The server notices that call two starts with exactly the same text as call one.
+
+00:03:14.959 --> 00:03:20.067
+This is prefix matching, and it lets the server reuse the work it already did.
+
+00:03:20.417 --> 00:03:27.457
+Call three adds one more message, which asks to change the code, and it reuses the shared prefix again.
+
+00:03:27.807 --> 00:03:28.508
+Why care?
+
+00:03:28.508 --> 00:03:31.158
+Look at one provider's price list.
+
+00:03:31.158 --> 00:03:37.550
+Input tokens that hit the cache cost about 50 times less than tokens that miss it.
+
+00:03:37.550 --> 00:03:39.967
+And they come back faster, too.
+
+00:03:40.567 --> 00:03:44.705
+This is also why the system prompt goes before the user prompt.
+
+00:03:44.705 --> 00:03:52.127
+The system prompt is usually fixed, so putting it first keeps the prefix the same, and the cache hits more often.
+
+00:03:52.477 --> 00:03:54.806
+So here is the design question.
+
+00:03:54.806 --> 00:04:00.517
+How do we cut context length, while causing as few cache misses as possible?
+
+00:04:01.300 --> 00:04:06.126
+The Claude Code agent uses five strategies, in two groups.
+
+00:04:06.126 --> 00:04:10.620
+The first three cut things out. The last two compress.
+
+00:04:10.970 --> 00:04:14.873
+Strategy one is a budget on the size of each tool result.
+
+00:04:14.873 --> 00:04:19.050
+It works at step seven, where the results of tools come back.
+
+00:04:19.400 --> 00:04:22.474
+Some results are huge, like a long log file.
+
+00:04:22.474 --> 00:04:29.040
+If a result is longer than a set threshold, the agent writes it into a temporary file instead.
+
+00:04:29.390 --> 00:04:37.270
+In the context, it keeps only a short preview, like: saved to a temp file, 80,000 characters in total.
+
+00:04:37.620 --> 00:04:38.677
+Nothing is lost.
+
+00:04:38.677 --> 00:04:43.500
+If the model needs the details later, it can simply read that file again.
+
+00:04:44.267 --> 00:04:46.977
+Strategy two is a tool count budget.
+
+00:04:46.977 --> 00:04:52.547
+Instead of the size of one result, it limits how many old results we keep.
+
+00:04:52.897 --> 00:04:59.572
+Tools that only look, such as Read, Bash, Grep, and Glob, keep just the 5 most recent results.
+
+00:04:59.572 --> 00:05:04.897
+Older ones are replaced with a short note: old tool result content cleared.
+
+00:05:05.247 --> 00:05:06.582
+Why is that safe?
+
+00:05:06.582 --> 00:05:09.172
+Because a read can be done again.
+
+00:05:09.172 --> 00:05:13.647
+If the model needs that file, it just reads it once more.
+
+00:05:14.247 --> 00:05:19.098
+Tools that change things, Edit and Write, keep all their results.
+
+00:05:19.098 --> 00:05:24.247
+You cannot redo an edit to see what it was, so that record must stay.
+
+00:05:25.034 --> 00:05:28.296
+Strategy three is a conversation round budget.
+
+00:05:28.296 --> 00:05:34.394
+A round is one assistant message, plus all the tool calls and results that go with it.
+
+00:05:34.744 --> 00:05:37.582
+A long task can run for 70 rounds or more.
+
+00:05:37.582 --> 00:05:43.664
+And in the old rounds, the agent may have explored wrong directions that no longer matter.
+
+00:05:44.014 --> 00:05:50.934
+So the agent removes the oldest rounds, and keeps the recent ones that describe the current work.
+
+00:05:51.701 --> 00:05:53.697
+Now the compress group.
+
+00:05:53.697 --> 00:05:56.301
+Strategy four is auto compact.
+
+00:05:56.651 --> 00:06:03.051
+It is triggered when, even after cutting, the context still fills about 83% of the window.
+
+00:06:03.401 --> 00:06:07.319
+Then the agent calls the LLM to summarize the messages.
+
+00:06:07.319 --> 00:06:15.441
+The summary follows a checklist: the files recently modified, the agent's status, the plan, and the tools it used.
+
+00:06:15.791 --> 00:06:22.551
+Compression can happen in two places: on the agent side, the client, and on the model provider's server.
+
+00:06:22.901 --> 00:06:26.719
+Strategy five is the last resort: context collapse.
+
+00:06:26.719 --> 00:06:36.901
+If, after all of this, the window is still almost full, the agent saves everything to disk and restarts the session with a fresh window.
+
+00:06:37.501 --> 00:06:39.475
+None of these ideas are fancy.
+
+00:06:39.475 --> 00:06:43.621
+They are solid, practical engineering methods used in industry.
+
+00:06:43.971 --> 00:06:45.682
+Pause the video for a moment.
+
+00:06:45.682 --> 00:06:52.171
+If you were designing your own context manager, what would you cut first, and what would you never throw away?
+
+00:06:52.968 --> 00:06:55.698
+Everything so far is short-term memory.
+
+00:06:55.698 --> 00:07:02.208
+It's like a computer's RAM: it lives inside one session, and it's gone when the session ends.
+
+00:07:02.558 --> 00:07:04.793
+But what about long-term memory?
+
+00:07:04.793 --> 00:07:10.798
+How does the agent carry knowledge from one session to the next, and into the project?
+
+00:07:11.348 --> 00:07:13.453
+We already have a simple answer.
+
+00:07:13.453 --> 00:07:16.348
+The agent has tools to read and write files.
+
+00:07:16.698 --> 00:07:26.316
+A memory.md file holds things like a description of the user, their feedback and preferences, the project status, and reference documents.
+
+00:07:26.316 --> 00:07:28.965
+The agent writes it and reads it back.
+
+00:07:28.965 --> 00:07:30.498
+That's dynamic memory.
+
+00:07:30.848 --> 00:07:36.018
+A CLAUDE.md file is written by you, the user, and rarely changes.
+
+00:07:36.018 --> 00:07:37.688
+That's static memory.
+
+00:07:38.468 --> 00:07:44.298
+But let's look at a more advanced technique: retrieval-augmented generation, or RAG.
+
+00:07:44.298 --> 00:07:46.588
+It is built on a vector database.
+
+00:07:46.938 --> 00:07:54.138
+Each piece of information is turned into a vector of numbers, called an embedding, and stored in the database.
+
+00:07:54.488 --> 00:07:57.776
+For example, we store three coding rules.
+
+00:07:57.776 --> 00:08:02.828
+Boolean checking functions should start with the prefix `has_`.
+
+00:08:02.828 --> 00:08:05.635
+Each file has at most 30 functions.
+
+00:08:05.635 --> 00:08:08.682
+And folders are at most 5 layers deep.
+
+00:08:08.682 --> 00:08:11.088
+Each rule gets its own vector.
+
+00:08:11.438 --> 00:08:15.049
+Now the user asks: add a function to check status.
+
+00:08:15.049 --> 00:08:21.550
+That query is also turned into a vector, and the database finds the closest stored vector.
+
+00:08:21.550 --> 00:08:26.678
+Here, it's the rule about boolean functions, with a similarity of 0.96.
+
+00:08:27.028 --> 00:08:31.757
+The agent adds that rule to the prompt, and sends both to the LLM.
+
+00:08:31.757 --> 00:08:36.988
+Now the model knows to call its new function something like `has_status`.
+
+00:08:37.588 --> 00:08:39.561
+Real systems go further.
+
+00:08:39.561 --> 00:08:44.988
+A system called Mem0 also merges memories that conflict or repeat.
+
+00:08:45.768 --> 00:08:50.008
+RAG sounds great, but it has three challenges.
+
+00:08:50.358 --> 00:08:53.236
+First, similarity is not relevance.
+
+00:08:53.236 --> 00:09:04.173
+Ask, does this code have bugs, and the closest vectors might be about where bug reports are stored, or running tests before a commit.
+
+00:09:04.173 --> 00:09:09.518
+Only one of them, a common bug is unchecked inputs, really helps.
+
+00:09:10.118 --> 00:09:12.388
+Second, it's hard to maintain.
+
+00:09:12.388 --> 00:09:17.004
+There are many vendors, such as Pinecone, Qdrant, and Milvus.
+
+00:09:17.004 --> 00:09:24.118
+And you must choose the embedding setup and chunk size, update the index, and merge conflicts.
+
+00:09:24.468 --> 00:09:26.162
+Third, it's unreadable.
+
+00:09:26.162 --> 00:09:29.330
+A human can open a memory file and read it.
+
+00:09:29.330 --> 00:09:31.908
+Nobody can read a table of vectors.
+
+00:09:32.258 --> 00:09:36.632
+And memory isn't the only thing an agent must bring into a project.
+
+00:09:36.632 --> 00:09:39.178
+Security policies need to reach it too.
+
+00:09:39.528 --> 00:09:45.121
+So which is better, a simple memory file or a vector database?
+
+00:09:45.121 --> 00:09:48.008
+There is no absolute answer yet.
+
+00:09:48.801 --> 00:09:51.843
+So what is a good memory design?
+
+00:09:51.843 --> 00:09:56.121
+Research points to one idea: structure helps.
+
+00:09:56.671 --> 00:10:06.671
+One line of work stores an agent's past experience at different levels: the whole trajectory, a reusable workflow, or a short summary of the insight.
+
+00:10:07.021 --> 00:10:09.270
+Another treats the user as code.
+
+00:10:09.270 --> 00:10:14.261
+Start from a raw conversation between two people over several sessions.
+
+00:10:14.611 --> 00:10:21.487
+Phase one: an LLM pulls out every fact as a flat string, and only ever appends to the list.
+
+00:10:21.487 --> 00:10:24.811
+That gives more than a thousand loose facts.
+
+00:10:25.161 --> 00:10:35.903
+Phase two: an LLM rewrites those facts as typed Python objects, like a Person class with a list of jobs and a list of passions.
+
+00:10:35.903 --> 00:10:41.401
+Dates become real dates, and repeated facts merge into one place.
+
+00:10:42.001 --> 00:10:46.881
+Structured memory like this is easier to query, and easier to check.
+
+00:10:47.668 --> 00:10:52.071
+So far we have short-term and long-term memory for one agent.
+
+00:10:52.071 --> 00:10:54.308
+Now the third topic: subagents.
+
+00:10:54.658 --> 00:10:56.056
+Here's the problem.
+
+00:10:56.056 --> 00:11:04.298
+We ask one agent: add a function that calculates the discount price for premium users, and write code and tests.
+
+00:11:04.648 --> 00:11:08.354
+It writes a function that returns 80% of the price.
+
+00:11:08.354 --> 00:11:12.422
+Then it writes a test that only checks the premium case.
+
+00:11:12.422 --> 00:11:16.128
+The test passes, but the test cases are incomplete.
+
+00:11:16.478 --> 00:11:16.849
+Why?
+
+00:11:16.849 --> 00:11:23.988
+The test was written by the same agent, with the code already in its context.
+
+00:11:23.988 --> 00:11:28.067
+It tested what it wrote, not what was asked.
+
+00:11:28.067 --> 00:11:30.478
+This is context pollution.
+
+00:11:31.078 --> 00:11:40.382
+With subagents, the main agent gives one subagent the job of writing the code, and a different subagent the job of writing the tests.
+
+00:11:40.382 --> 00:11:46.678
+The test writer sees only the task, so it also checks a regular user, who pays full price.
+
+00:11:47.028 --> 00:11:49.376
+Subagents bring three advantages.
+
+00:11:49.376 --> 00:11:55.068
+First, context isolation: each one has its own context window and its own tools.
+
+00:11:55.418 --> 00:12:01.738
+Second, specialization: one can be a UX design expert, another a security expert.
+
+00:12:02.088 --> 00:12:07.048
+Third, parallelization: many subagents can work at the same time.
+
+00:12:07.398 --> 00:12:18.314
+In Claude Code, you define a subagent in a markdown file: a name, a description, the tools it may use, the model, and then its own system prompt.
+
+00:12:18.314 --> 00:12:22.078
+The main agent starts it just like calling a tool.
+
+00:12:22.868 --> 00:12:26.068
+Let's sum up, on the loop from last time.
+
+00:12:26.418 --> 00:12:29.536
+Context management works at steps 3 and 7.
+
+00:12:29.536 --> 00:12:36.738
+Cut old and oversized results, compress when the window fills, and keep the prompt cache hitting.
+
+00:12:37.088 --> 00:12:42.008
+RAG gives the agent long-term memory, retrieved while preparing the context.
+
+00:12:42.358 --> 00:12:48.398
+And subagents run as tools at step 6, each with a clean context of its own.
+
+00:12:48.748 --> 00:12:50.958
+Now the context is well managed.
+
+00:12:50.958 --> 00:12:55.378
+The next problem is that the agent's built-in tools are limited.
+
+00:12:55.378 --> 00:12:56.828
+That's for next time.
+
+00:12:57.178 --> 00:12:58.939
+Here's something to try.
+
+00:12:58.939 --> 00:13:04.809
+In Claude Code, type /context during a long task, and see what fills the window.
+
+00:13:04.809 --> 00:13:08.258
+Can you spot which strategy will kick in first?
+
+00:13:09.035 --> 00:13:10.829
+That's all for this lecture.
+
+00:13:10.829 --> 00:13:15.315
+Thank you for watching, and see you in the next class, MCP and Skills.
+

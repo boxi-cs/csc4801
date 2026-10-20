@@ -1,0 +1,602 @@
+WEBVTT
+
+00:00:02.900 --> 00:00:07.478
+Welcome to CSC4801, AI-assisted Software Engineering.
+
+00:00:07.478 --> 00:00:11.020
+This is Lecture 5: How to Write a Prompt.
+
+00:00:11.800 --> 00:00:21.840
+Here is a map of the parts around a coding agent: context management, skills, RAG, MCP, a sandbox, and subagents.
+
+00:00:22.190 --> 00:00:26.990
+Today we zoom in on the place where everything starts: the prompt.
+
+00:00:27.340 --> 00:00:33.083
+The title of this part plays on a famous paper, Attention Is All You Need.
+
+00:00:33.083 --> 00:00:37.740
+Ours is: Prompt Is All You Need, by all students in CSC4801.
+
+00:00:38.090 --> 00:00:41.478
+Because every one of you writes prompts already.
+
+00:00:41.478 --> 00:00:47.690
+The real questions are how to write them well, and how to tell when the result is right.
+
+00:00:48.467 --> 00:00:51.852
+Writing a prompt has two key parts.
+
+00:00:51.852 --> 00:00:53.787
+Specify, and verify.
+
+00:00:54.137 --> 00:00:57.962
+To specify, you state the goal and what counts as done,
+
+00:00:57.962 --> 00:01:01.857
+and you supply the context and examples the model needs.
+
+00:01:02.207 --> 00:01:05.619
+To verify, you set up the workflow and the tools,
+
+00:01:05.619 --> 00:01:07.847
+then you run tests, and iterate.
+
+00:01:08.197 --> 00:01:10.002
+Look at the whole path.
+
+00:01:10.002 --> 00:01:13.220
+Your intent becomes a task specification.
+
+00:01:13.220 --> 00:01:15.652
+The model produces a candidate.
+
+00:01:15.652 --> 00:01:18.164
+Then comes review and execution.
+
+00:01:18.164 --> 00:01:22.637
+You observe how it behaves, and you accept it, or revise.
+
+00:01:22.987 --> 00:01:26.526
+A better prompt gives you better candidates.
+
+00:01:26.526 --> 00:01:30.627
+But accepting one still needs engineering evidence.
+
+00:01:31.227 --> 00:01:35.941
+So before you write a long prompt, keep three questions visible.
+
+00:01:35.941 --> 00:01:40.507
+What should change? What must stay true? And how will we know?
+
+00:01:40.857 --> 00:01:42.516
+Why does this matter?
+
+00:01:42.516 --> 00:01:45.676
+Because a prompt is a conditional input.
+
+00:01:45.676 --> 00:01:49.784
+Instructions describe what to do and how to respond.
+
+00:01:49.784 --> 00:01:53.497
+Context supplies facts, examples, and evidence.
+
+00:01:53.847 --> 00:01:59.468
+The model responds to the context it has, not to the intent in your head.
+
+00:01:59.468 --> 00:02:03.087
+Anything you don't write down, it has to guess.
+
+00:02:03.867 --> 00:02:07.107
+Here is a starting point: six boxes to fill in.
+
+00:02:07.457 --> 00:02:09.692
+Goal: what should change?
+
+00:02:09.692 --> 00:02:12.196
+Context: which facts matter?
+
+00:02:12.196 --> 00:02:15.057
+Input: what should be processed?
+
+00:02:15.407 --> 00:02:18.366
+Constraints: what must remain true?
+
+00:02:18.366 --> 00:02:21.155
+Output: what should be delivered?
+
+00:02:21.155 --> 00:02:23.607
+And checks: how will we know?
+
+00:02:23.957 --> 00:02:26.286
+The three questions are all in there.
+
+00:02:26.286 --> 00:02:30.629
+This is a classroom checklist, not an official framework with a name.
+
+00:02:30.629 --> 00:02:32.517
+Use it to spot what's missing.
+
+00:02:32.867 --> 00:02:37.041
+Start with the goal, and give it a clear verb and object.
+
+00:02:37.041 --> 00:02:42.827
+Help with my Python code, or, make it better, leaves every choice to the model.
+
+00:02:43.177 --> 00:02:49.475
+Compare that with: fix empty-list handling in the average function of stats.py.
+
+00:02:49.475 --> 00:02:52.983
+The verb is fix. The object is one function.
+
+00:02:52.983 --> 00:02:54.817
+Now the scope is clear.
+
+00:02:55.167 --> 00:03:01.327
+A clear scope means less accidental work, and fewer hidden choices.
+
+00:03:02.100 --> 00:03:05.489
+Next, define the behavior you can observe.
+
+00:03:05.489 --> 00:03:07.183
+Here is our function.
+
+00:03:07.183 --> 00:03:11.540
+It returns the sum of the list, divided by its length.
+
+00:03:11.890 --> 00:03:14.049
+Pause and think for a moment.
+
+00:03:14.049 --> 00:03:16.730
+What happens when the list is empty?
+
+00:03:17.280 --> 00:03:21.559
+The length is zero, so Python raises a division by zero error.
+
+00:03:21.559 --> 00:03:23.560
+That's the bug we want fixed.
+
+00:03:23.910 --> 00:03:25.623
+Now write the contract.
+
+00:03:25.623 --> 00:03:30.613
+The input is a list of finite numbers, and empty lists are allowed.
+
+00:03:30.613 --> 00:03:33.816
+For the output, an empty list returns None.
+
+00:03:33.816 --> 00:03:36.870
+Otherwise, the function returns the mean.
+
+00:03:37.220 --> 00:03:40.300
+An edge case is part of the requirement.
+
+00:03:40.300 --> 00:03:43.380
+It is not a matter of the model's taste.
+
+00:03:43.980 --> 00:03:47.519
+Put it all together, and you get a complete request.
+
+00:03:47.519 --> 00:03:50.310
+Fix the average function for empty lists.
+
+00:03:50.310 --> 00:03:53.100
+State the input, and the expected output.
+
+00:03:53.450 --> 00:03:54.842
+Then the constraints.
+
+00:03:54.842 --> 00:04:00.410
+Preserve the signature and the input list, and use only the Python standard library.
+
+00:04:00.760 --> 00:04:05.956
+Ask for something you can check: a minimal diff, plus test evidence.
+
+00:04:05.956 --> 00:04:07.178
+Attach stats.py.
+
+00:04:07.178 --> 00:04:09.394
+Include those three examples.
+
+00:04:09.394 --> 00:04:13.520
+And ask the model to tell you if the tests cannot run.
+
+00:04:13.870 --> 00:04:20.470
+It's short, it's concrete, and every line is tied to an outcome you can check.
+
+00:04:21.267 --> 00:04:24.098
+A popular trick is the role prompt.
+
+00:04:24.098 --> 00:04:28.467
+You are a senior engineer. Review this code carefully.
+
+00:04:28.817 --> 00:04:32.220
+A role can guide the style and the point of view.
+
+00:04:32.220 --> 00:04:34.442
+But it does not grant expertise.
+
+00:04:34.442 --> 00:04:38.817
+The model doesn't become a senior engineer because you said so.
+
+00:04:39.167 --> 00:04:41.304
+What helps more is a method.
+
+00:04:41.304 --> 00:04:43.364
+Check the input boundaries.
+
+00:04:43.364 --> 00:04:45.349
+Find one concrete failure.
+
+00:04:45.349 --> 00:04:47.104
+Cite the relevant line.
+
+00:04:47.104 --> 00:04:50.767
+Now the model knows what a careful review means.
+
+00:04:51.117 --> 00:04:52.482
+Real systems do both.
+
+00:04:52.482 --> 00:04:59.437
+Here is one of the system prompts inside Claude Code, for an agent that reviews the rules of its auto mode.
+
+00:04:59.787 --> 00:05:02.112
+It starts by assigning a role.
+
+00:05:02.112 --> 00:05:05.833
+Then it explains the setting and states the job.
+
+00:05:05.833 --> 00:05:13.507
+And then it lists the exact criteria to check: clarity, completeness, conflicts, and actionability.
+
+00:05:13.857 --> 00:05:18.637
+It even says what to do when all the rules look good.
+
+00:05:18.637 --> 00:05:20.802
+The role sets the scene.
+
+00:05:20.802 --> 00:05:23.057
+The method does the work.
+
+00:05:23.834 --> 00:05:26.940
+Next, keep instructions and data apart.
+
+00:05:26.940 --> 00:05:32.434
+The task says: summarize the incident, and use only the supplied log.
+
+00:05:32.784 --> 00:05:36.788
+The log itself goes inside tags, here called incident log.
+
+00:05:36.788 --> 00:05:42.104
+Now the model can tell your instructions from the material it should work on.
+
+00:05:42.454 --> 00:05:48.534
+And if the log happens to contain a sentence that looks like an instruction, it stays data.
+
+00:05:48.884 --> 00:05:52.868
+When the task is about code, give a minimal code region.
+
+00:05:52.868 --> 00:06:00.764
+Where: the target path and function, the relevant caller or interface, and the runtime and dependency versions.
+
+00:06:01.114 --> 00:06:08.274
+Why, and how to check: the expected behavior, a minimal failing example, and the right test command.
+
+00:06:08.624 --> 00:06:13.559
+Give enough context to tell the intended patch apart from a guess.
+
+00:06:13.559 --> 00:06:18.344
+Not the whole repository. Just the part that decides the answer.
+
+00:06:19.134 --> 00:06:20.170
+Now, examples.
+
+00:06:20.170 --> 00:06:23.428
+Zero-shot prompting means instructions only.
+
+00:06:23.428 --> 00:06:29.054
+Classify the issue as a bug, a feature, or a question, and return one label.
+
+00:06:29.404 --> 00:06:31.665
+How do I export CSV files?
+
+00:06:31.665 --> 00:06:33.231
+That's a question.
+
+00:06:33.231 --> 00:06:38.884
+Try a clear instruction like this first, before you add examples.
+
+00:06:39.234 --> 00:06:40.778
+Here's a harder one.
+
+00:06:40.778 --> 00:06:45.331
+Extract the drink order from this message, and output JSON.
+
+00:06:45.331 --> 00:06:50.194
+A large iced latte, less sugar, with an extra shot of espresso.
+
+00:06:50.544 --> 00:06:54.148
+What field names will you get back? Size, or cup?
+
+00:06:54.148 --> 00:06:56.281
+Sugar as a word, or a number?
+
+00:06:56.281 --> 00:07:01.944
+The model has to invent a format, and it may change from one run to the next.
+
+00:07:02.494 --> 00:07:05.528
+Few-shot prompting adds examples.
+
+00:07:05.528 --> 00:07:08.101
+Crashes on startup is a bug.
+
+00:07:08.101 --> 00:07:10.675
+Add CSV export is a feature.
+
+00:07:10.675 --> 00:07:13.525
+Where is export, is a question.
+
+00:07:13.525 --> 00:07:17.294
+So, CSV export is missing rows, is a bug.
+
+00:07:17.644 --> 00:07:25.455
+For the drink order, two worked examples show the exact fields: size, drink, temperature, sugar, and extras.
+
+00:07:25.455 --> 00:07:28.204
+Now the model fills in the same shape.
+
+00:07:28.554 --> 00:07:32.914
+Examples can show a decision boundary, or a local convention.
+
+00:07:33.264 --> 00:07:35.480
+So choose them for coverage.
+
+00:07:35.480 --> 00:07:40.704
+Three obvious bug reports, worded the same way, teach very little.
+
+00:07:41.054 --> 00:07:48.170
+A stronger set has one example per label, a case that looks ambiguous, and a consistent output format.
+
+00:07:48.170 --> 00:07:53.054
+What matters is coverage of your task, not a magic number of examples.
+
+00:07:53.834 --> 00:07:58.594
+You have met chain of thought before: let's think step by step.
+
+00:07:58.944 --> 00:08:00.162
+But be careful.
+
+00:08:00.162 --> 00:08:06.738
+The results depend on the model and the task setting, and more text is not proof.
+
+00:08:06.738 --> 00:08:12.664
+Treat published prompting results as evidence to test, not as guarantees.
+
+00:08:13.264 --> 00:08:16.024
+A planning prompt has the same trap.
+
+00:08:16.024 --> 00:08:19.244
+Understand, implement, test, is too vague.
+
+00:08:19.244 --> 00:08:21.544
+Each step could mean anything.
+
+00:08:21.894 --> 00:08:26.423
+A plan with decisions says: read the empty-input contract.
+
+00:08:26.423 --> 00:08:28.688
+Add only an empty-list guard.
+
+00:08:28.688 --> 00:08:31.734
+Run the edge-case and regression tests.
+
+00:08:32.084 --> 00:08:35.604
+A good plan names what each step will resolve.
+
+00:08:36.204 --> 00:08:38.794
+One more technique: structured output.
+
+00:08:38.794 --> 00:08:47.724
+Ask the model to review a function and return JSON only, with fields for the bug, the severity, the reason, and the corrected code.
+
+00:08:48.074 --> 00:08:50.947
+Now a program can read the answer directly.
+
+00:08:50.947 --> 00:08:54.354
+Structured output makes the result easy to process.
+
+00:08:55.134 --> 00:08:58.585
+Here is a template that collects it all.
+
+00:08:58.585 --> 00:09:03.934
+Goal, context and input, constraints, deliverable, and checks.
+
+00:09:04.284 --> 00:09:11.364
+Plus one line people often forget: if you are blocked, report the missing fact instead of guessing.
+
+00:09:11.714 --> 00:09:21.354
+You can also add a relevant example, a short staged workflow, a source or a version, or a budget and a stopping rule.
+
+00:09:21.704 --> 00:09:24.792
+But adapt it, don't copy it blindly.
+
+00:09:24.792 --> 00:09:29.424
+Delete any field that adds no value to your real task.
+
+00:09:30.024 --> 00:09:33.224
+The habit worth keeping has four parts.
+
+00:09:33.224 --> 00:09:35.357
+Make your intent explicit.
+
+00:09:35.357 --> 00:09:37.408
+Bring the right evidence.
+
+00:09:37.408 --> 00:09:38.967
+Check the artifact.
+
+00:09:38.967 --> 00:09:41.264
+And revise from the failure.
+
+00:09:41.614 --> 00:09:45.202
+A good prompt starts a reliable handoff.
+
+00:09:45.202 --> 00:09:47.534
+Verification completes it.
+
+00:09:48.334 --> 00:09:53.151
+But what if the output is still wrong after several attempts?
+
+00:09:53.151 --> 00:09:54.414
+Is it game over?
+
+00:09:54.964 --> 00:09:55.660
+Not yet.
+
+00:09:55.660 --> 00:09:59.924
+There is another lever, called test-time scaling.
+
+00:10:00.274 --> 00:10:06.461
+Training-time compute uses training data and optimization to update the model's weights.
+
+00:10:06.461 --> 00:10:09.554
+That cost is shared across all future tasks.
+
+00:10:09.904 --> 00:10:12.997
+Compute at test time keeps the weights fixed.
+
+00:10:12.997 --> 00:10:16.984
+Instead, it spends extra inference effort on one new task.
+
+00:10:17.334 --> 00:10:24.534
+So the same model can try harder on a hard problem, without any retraining.
+
+00:10:25.301 --> 00:10:28.627
+There are three ways to spend that effort.
+
+00:10:28.627 --> 00:10:31.636
+Sequential: one path, with more steps.
+
+00:10:31.636 --> 00:10:34.170
+Parallel: more paths to compare.
+
+00:10:34.170 --> 00:10:37.021
+And search: choose where to explore.
+
+00:10:37.371 --> 00:10:42.483
+Sequential scaling means reasoning longer, or revising after feedback.
+
+00:10:42.483 --> 00:10:47.011
+Say the first draft makes every customer pay 80% of the price.
+
+00:10:47.361 --> 00:10:52.043
+A test gives feedback: for a nonmember, we expected 100, but got 80.
+
+00:10:52.043 --> 00:10:57.001
+The revision gives the discount only to members, and then we test again.
+
+00:10:57.351 --> 00:11:03.192
+The second test must run on the revised code, not reuse an old result.
+
+00:11:03.192 --> 00:11:07.031
+Extra steps help when they bring new evidence.
+
+00:11:07.631 --> 00:11:12.229
+Parallel scaling samples several candidates, then selects one.
+
+00:11:12.229 --> 00:11:15.047
+Self-consistency votes on the answers.
+
+00:11:15.047 --> 00:11:17.791
+Best of N ranks them with a verifier.
+
+00:11:18.141 --> 00:11:20.149
+Here's why it is attractive.
+
+00:11:20.149 --> 00:11:25.815
+Say one sample is right a quarter of the time, and the samples are independent.
+
+00:11:25.815 --> 00:11:30.621
+With 8 samples, the chance that at least one is right is about 90%.
+
+00:11:30.971 --> 00:11:35.761
+But a correct candidate only helps if the selector can find it.
+
+00:11:35.761 --> 00:11:39.411
+Both methods depend on the quality of selection.
+
+00:11:40.201 --> 00:11:42.424
+Search goes one step further.
+
+00:11:42.424 --> 00:11:46.641
+Start from a bug report, and generate a few hypotheses.
+
+00:11:46.991 --> 00:11:48.302
+Evaluate each branch.
+
+00:11:48.302 --> 00:11:54.231
+Expand the promising ones, prune or backtrack from the rest, and stop when the budget runs out.
+
+00:11:54.581 --> 00:12:01.421
+Search spends compute on promising intermediate steps, not just on complete answers.
+
+00:12:02.021 --> 00:12:04.784
+So how much effort should a task get?
+
+00:12:04.784 --> 00:12:10.461
+If it's clear and easy: one attempt, a cheap check, and stop when it passes.
+
+00:12:10.811 --> 00:12:19.811
+If it's hard but checkable: try diverse candidates, use informative feedback, and keep some budget for verification.
+
+00:12:20.161 --> 00:12:24.239
+And if information is missing, more retries won't help.
+
+00:12:24.239 --> 00:12:26.242
+Retrieve the facts, or ask.
+
+00:12:26.242 --> 00:12:29.801
+Change the approach, and stop the blind retries.
+
+00:12:30.151 --> 00:12:32.482
+And if it still doesn't work?
+
+00:12:32.482 --> 00:12:35.455
+The deck jokes that you may need AGI.
+
+00:12:35.455 --> 00:12:38.831
+Until then, go back to specify and verify.
+
+00:12:39.601 --> 00:12:40.881
+Let's sum up.
+
+00:12:41.231 --> 00:12:44.699
+A prompt has two parts: specify, and verify.
+
+00:12:44.699 --> 00:12:51.951
+Keep three questions visible: what should change, what must stay true, and how will we know.
+
+00:12:52.301 --> 00:13:00.421
+Give a clear verb and object, a contract with its edge cases, just the right context, and examples chosen for coverage.
+
+00:13:00.771 --> 00:13:08.735
+If the output is still wrong, spend test-time effort wisely: revise with feedback, sample and select, or search.
+
+00:13:08.735 --> 00:13:11.011
+And when facts are missing, ask.
+
+00:13:11.361 --> 00:13:13.016
+Here's something to try.
+
+00:13:13.016 --> 00:13:17.222
+Take a prompt you wrote this week, and fill in the six boxes.
+
+00:13:17.222 --> 00:13:18.601
+Which box was empty?
+
+00:13:19.401 --> 00:13:20.894
+That's all for this lecture.
+
+00:13:20.894 --> 00:13:23.721
+Bring your questions to the next class, Requirements.
+

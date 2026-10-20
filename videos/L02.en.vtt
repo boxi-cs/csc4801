@@ -1,0 +1,431 @@
+WEBVTT
+
+00:00:02.900 --> 00:00:07.519
+Welcome to CSC4801, AI-assisted Software Engineering.
+
+00:00:07.519 --> 00:00:11.180
+This is Lecture Two: Principles of Agents.
+
+00:00:11.967 --> 00:00:19.167
+Last time, we saw that a large language model does one thing: it predicts the next token, again and again.
+
+00:00:19.517 --> 00:00:21.506
+So let's ask one to fix a bug.
+
+00:00:21.506 --> 00:00:26.677
+We paste in the bug report and the code files, and the model writes an answer.
+
+00:00:27.027 --> 00:00:29.060
+But look at what came back.
+
+00:00:29.060 --> 00:00:35.161
+The last line ends with a semicolon, a syntax slip that doesn't belong in Python.
+
+00:00:35.161 --> 00:00:37.947
+And the model has no way to find out.
+
+00:00:38.547 --> 00:00:43.467
+It had only one chance to answer, and nothing checked the result.
+
+00:00:43.817 --> 00:00:45.525
+There's a second problem.
+
+00:00:45.525 --> 00:00:49.078
+A real code base can have more than 3 million lines.
+
+00:00:49.078 --> 00:00:54.817
+That won't fit in the model's context window, so we can't even show it all the code.
+
+00:00:55.600 --> 00:00:58.275
+A human engineer would work differently.
+
+00:00:58.275 --> 00:01:01.752
+Explore the repository. Retrieve the relevant files.
+
+00:01:01.752 --> 00:01:04.360
+Run the code, and look at what happens.
+
+00:01:04.710 --> 00:01:08.596
+To work like that, the model needs a body around it:
+
+00:01:08.596 --> 00:01:13.079
+something that runs tools for it and feeds the results back.
+
+00:01:13.079 --> 00:01:15.470
+That body is called the harness.
+
+00:01:16.070 --> 00:01:18.967
+An agent is an LLM plus a harness.
+
+00:01:18.967 --> 00:01:23.910
+How that combination works is the subject of this lecture.
+
+00:01:24.700 --> 00:01:31.659
+You may have heard four buzzwords: prompt engineering, context engineering, harness engineering, and loop engineering.
+
+00:01:31.659 --> 00:01:35.020
+By the end of this video, you'll see where each one fits.
+
+00:01:35.370 --> 00:01:37.232
+An agent has two goals.
+
+00:01:37.232 --> 00:01:42.170
+First, give the model a body, so it can act on real problems.
+
+00:01:42.520 --> 00:01:44.812
+Second, reduce uncertainty.
+
+00:01:44.812 --> 00:01:52.960
+When something goes wrong, an agent can see the error, and try again, and again, until it works.
+
+00:01:53.733 --> 00:01:56.093
+So how does an agent work inside?
+
+00:01:56.093 --> 00:02:00.813
+We'll use Claude Code, a widely used coding agent, as our example.
+
+00:02:01.163 --> 00:02:02.610
+Here is its workflow.
+
+00:02:02.610 --> 00:02:09.363
+It has three parts: input processing at the top, a main loop in the middle, and output at the end.
+
+00:02:09.713 --> 00:02:12.899
+We'll follow one request all the way through.
+
+00:02:12.899 --> 00:02:19.553
+We have a Python file called main.py, and we ask the agent to add error handling to that file.
+
+00:02:20.333 --> 00:02:22.673
+Step 1: receive the prompt.
+
+00:02:22.673 --> 00:02:26.053
+The agent accepts three kinds of input.
+
+00:02:26.403 --> 00:02:28.861
+Plain text is the user's prompt.
+
+00:02:28.861 --> 00:02:36.388
+An at sign followed by a file name is a file reference: the whole file is loaded into the message.
+
+00:02:36.388 --> 00:02:40.843
+And a slash starts a command, such as a predefined prompt.
+
+00:02:41.193 --> 00:02:44.502
+Inside the agent, everything becomes a message.
+
+00:02:44.502 --> 00:02:49.993
+Each message has a role, here user, and a content field that holds the prompt.
+
+00:02:50.343 --> 00:02:57.423
+Before the user's message, the agent adds a system prompt, such as: you are a helpful coding assistant.
+
+00:02:57.773 --> 00:03:03.728
+System prompts are high-priority instructions, usually written in advance.
+
+00:03:03.728 --> 00:03:11.453
+They define a role, set a style, add rules, control the output format, and make the model safer.
+
+00:03:12.053 --> 00:03:14.493
+In practice, prompts come in layers.
+
+00:03:14.493 --> 00:03:17.948
+The model's own system prompt, which you can't see.
+
+00:03:17.948 --> 00:03:22.149
+A project prompt, like a CLAUDE.md file in the project folder.
+
+00:03:22.149 --> 00:03:25.333
+Memory and skills. And finally, your own input.
+
+00:03:25.683 --> 00:03:26.982
+Step 2: initialize.
+
+00:03:26.982 --> 00:03:32.863
+The agent sets up its runtime state, such as the message list and the available tools,
+
+00:03:32.863 --> 00:03:35.529
+and keeps it all in one state variable.
+
+00:03:35.529 --> 00:03:41.683
+Every change during the loop goes into that one place, which avoids a whole class of bugs.
+
+00:03:42.467 --> 00:03:44.447
+Now we enter the main loop.
+
+00:03:44.447 --> 00:03:46.500
+Step 3: prepare the context.
+
+00:03:46.500 --> 00:03:51.267
+On the first pass, that's just the system prompt and our message.
+
+00:03:51.617 --> 00:03:53.250
+Step 4: call the LLM.
+
+00:03:53.250 --> 00:03:58.617
+The model runs on a server, and the agent calls it through a web API.
+
+00:03:58.967 --> 00:04:05.946
+Look at what goes into each call: the model name, the system prompt, the full message history,
+
+00:04:05.946 --> 00:04:09.807
+and the description of every tool the agent can use.
+
+00:04:09.807 --> 00:04:11.367
+More than 40 of them.
+
+00:04:11.967 --> 00:04:13.932
+Step 5: stream the response.
+
+00:04:13.932 --> 00:04:15.617
+A task can take minutes.
+
+00:04:15.617 --> 00:04:22.638
+Instead of waiting for the whole answer, the agent receives tokens one by one, as they're generated,
+
+00:04:22.638 --> 00:04:25.447
+so you can watch the work as it happens.
+
+00:04:26.233 --> 00:04:28.539
+But here is the central question.
+
+00:04:28.539 --> 00:04:31.473
+How does the model decide what to do next?
+
+00:04:32.023 --> 00:04:37.013
+The answer is a pattern called ReAct, short for reasoning and acting.
+
+00:04:37.013 --> 00:04:39.543
+It's the cornerstone of LLM agents.
+
+00:04:39.893 --> 00:04:43.503
+Reasoning means the model first writes down its thoughts.
+
+00:04:43.503 --> 00:04:48.253
+To solve this request, first I need to inspect the file. Second, and so on.
+
+00:04:48.603 --> 00:04:51.760
+There are two ways to get a model to reason.
+
+00:04:51.760 --> 00:04:57.787
+One is the prompt: show it worked examples, or simply add, let's think step by step.
+
+00:04:57.787 --> 00:05:00.083
+This is called chain of thought.
+
+00:05:00.433 --> 00:05:05.951
+The other is post-training: train the model so that reasoning becomes its habit.
+
+00:05:05.951 --> 00:05:08.433
+DeepSeek R1 is a well-known example.
+
+00:05:08.783 --> 00:05:10.641
+Acting means calling a tool.
+
+00:05:10.641 --> 00:05:17.541
+The harness tells the model which tools exist, and asks it to reply in a fixed format when it wants one:
+
+00:05:17.541 --> 00:05:19.863
+the tool's name, and its arguments.
+
+00:05:20.213 --> 00:05:22.907
+The model only writes the request.
+
+00:05:22.907 --> 00:05:28.533
+The harness reads that reply, runs the tool, and hands back the result.
+
+00:05:29.333 --> 00:05:31.966
+Let's watch the loop solve our task.
+
+00:05:31.966 --> 00:05:34.013
+The request goes to the LLM.
+
+00:05:34.363 --> 00:05:39.483
+The model reasons: I need to inspect main.py first.
+
+00:05:39.833 --> 00:05:40.832
+So it acts.
+
+00:05:40.832 --> 00:05:46.913
+It calls the Read tool on main.py, and the file content comes back.
+
+00:05:47.263 --> 00:05:52.223
+Now it reasons again: I should catch the errors of missing arguments.
+
+00:05:52.573 --> 00:05:57.621
+Next, it calls the Edit tool on main.py, with the proposed changes.
+
+00:05:57.621 --> 00:06:00.333
+The tool reports: update successful.
+
+00:06:00.683 --> 00:06:02.741
+Then something important.
+
+00:06:02.741 --> 00:06:06.363
+The model thinks: I need to verify the code.
+
+00:06:06.963 --> 00:06:13.990
+It runs python main.py, and sees the program print its usage message instead of crashing.
+
+00:06:13.990 --> 00:06:15.963
+The error handling works.
+
+00:06:16.313 --> 00:06:17.129
+What's next?
+
+00:06:17.129 --> 00:06:23.113
+The model decides no further action is needed, and returns the final result to the user.
+
+00:06:23.463 --> 00:06:26.379
+Reason, act, observe, and repeat.
+
+00:06:26.379 --> 00:06:35.303
+Every turn of this loop is just another call to the same next-token predictor, with a longer context.
+
+00:06:36.100 --> 00:06:39.154
+Let's look closer at Step 6: calling tools.
+
+00:06:39.154 --> 00:06:42.420
+Here are some of Claude Code's built-in tools.
+
+00:06:42.770 --> 00:06:44.762
+Bash runs shell commands.
+
+00:06:44.762 --> 00:06:46.992
+Edit and Write change files.
+
+00:06:46.992 --> 00:06:51.850
+Glob, Grep, and Read look at files without changing anything.
+
+00:06:52.200 --> 00:06:54.022
+Notice the last column.
+
+00:06:54.022 --> 00:06:57.902
+Tools that change something need your permission.
+
+00:06:57.902 --> 00:07:00.040
+Tools that only read don't.
+
+00:07:00.640 --> 00:07:06.285
+Tools are the agent's interface to the real world, so every call must be checked.
+
+00:07:06.285 --> 00:07:10.117
+Does the file contain malicious code or hidden prompts?
+
+00:07:10.117 --> 00:07:13.880
+Is all the information there? Is it even a valid file?
+
+00:07:14.230 --> 00:07:16.314
+Step 7: receive the results.
+
+00:07:16.314 --> 00:07:18.992
+Read-only tools can run in parallel.
+
+00:07:18.992 --> 00:07:24.870
+Tools that write run one at a time, in order, so they don't step on each other.
+
+00:07:25.220 --> 00:07:29.433
+Each result is appended to the message list as a tool result.
+
+00:07:29.433 --> 00:07:32.540
+And that list is sent again on the next call.
+
+00:07:33.334 --> 00:07:34.978
+Step 8: check the loop.
+
+00:07:34.978 --> 00:07:42.414
+The agent passes all the messages to the model again, and the model decides whether it needs more tools.
+
+00:07:42.764 --> 00:07:45.870
+The loop also stops when something goes wrong:
+
+00:07:45.870 --> 00:07:50.259
+it reaches the maximum number of turns, so it can't loop forever;
+
+00:07:50.259 --> 00:07:56.404
+the messages exceed the token limit; the user asks it to stop; or the API returns an error.
+
+00:07:56.754 --> 00:08:01.047
+When the model needs no more tools, we reach Step 9: the end.
+
+00:08:01.047 --> 00:08:09.634
+The agent updates its state, such as token usage, sends a summary to the user, and saves the whole conversation for later.
+
+00:08:09.984 --> 00:08:12.077
+Now back to the four buzzwords.
+
+00:08:12.077 --> 00:08:14.644
+Prompt engineering is about the input.
+
+00:08:14.644 --> 00:08:18.291
+Context engineering is about what goes into each call.
+
+00:08:18.291 --> 00:08:22.412
+Harness engineering is the tools and checks around the model.
+
+00:08:22.412 --> 00:08:25.113
+And loop engineering is the loop itself.
+
+00:08:25.113 --> 00:08:29.504
+Which one matters most? All of them are part of the same machine.
+
+00:08:30.300 --> 00:08:31.852
+One last question.
+
+00:08:31.852 --> 00:08:34.180
+Do we always need an agent?
+
+00:08:34.730 --> 00:08:35.586
+Not always.
+
+00:08:35.586 --> 00:08:42.047
+A method called Agentless fixes bugs with a fixed pipeline instead of an open loop.
+
+00:08:42.047 --> 00:08:45.705
+One LLM call explores the repository structure.
+
+00:08:45.705 --> 00:08:50.530
+The next reads the relevant file. The last one writes the fix.
+
+00:08:50.880 --> 00:08:54.920
+Sometimes, reasoning wastes resources on a simple task.
+
+00:08:54.920 --> 00:09:03.440
+And sometimes you don't need an LLM at all, because ordinary code can do it, with lower latency and no tokens spent.
+
+00:09:03.790 --> 00:09:09.463
+A weather lookup, or a Linux command you already know, doesn't need an agent.
+
+00:09:09.463 --> 00:09:12.630
+Use the loop when the task really needs it.
+
+00:09:13.400 --> 00:09:15.080
+Let's sum up.
+
+00:09:15.430 --> 00:09:20.259
+An LLM alone gets one chance and can't check its answer.
+
+00:09:20.259 --> 00:09:23.190
+An agent is an LLM plus a harness.
+
+00:09:23.540 --> 00:09:31.860
+The harness runs a loop: prepare the context, call the model, run the tools it asks for, add the results, and repeat.
+
+00:09:32.210 --> 00:09:38.130
+Inside the loop, the model follows ReAct: it reasons, acts, and observes.
+
+00:09:38.480 --> 00:09:40.116
+Here's something to try.
+
+00:09:40.116 --> 00:09:44.068
+Give a coding agent a small task, and read its transcript.
+
+00:09:44.068 --> 00:09:47.680
+Can you label every step with its number in the loop?
+
+00:09:48.467 --> 00:09:50.212
+That's all for this lecture.
+
+00:09:50.212 --> 00:09:56.067
+Bring your questions to the next class, Advanced Agents, where we'll make this agent stronger.
+

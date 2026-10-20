@@ -1,0 +1,13 @@
+/* CSC4801 additions on top of style.css: the footer credit. */
+footer p { margin: 4px 0; }
+footer .credit { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+footer .credit img { flex: none; }
+footer .credit b { font-weight: 600; color: var(--ink-2); }
+footer .fine { font-size: 12px; opacity: 0.8; }
+.logo-dark { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .logo-light { display: none; }
+  :root:not([data-theme="light"]) .logo-dark { display: inline; }
+}
+:root[data-theme="dark"] .logo-light { display: none; }
+:root[data-theme="dark"] .logo-dark { display: inline; }

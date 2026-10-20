@@ -1,0 +1,623 @@
+WEBVTT
+
+00:00:02.900 --> 00:00:07.443
+Welcome to CSC4801, AI-assisted Software Engineering.
+
+00:00:07.443 --> 00:00:12.500
+This is Lecture 1: The Principles of Large Language Models.
+
+00:00:13.300 --> 00:00:18.431
+You have probably used a chat assistant like ChatGPT, Claude, or DeepSeek.
+
+00:00:18.431 --> 00:00:22.660
+Coding tools like Cursor are built on the same kind of model.
+
+00:00:23.010 --> 00:00:29.730
+In every one of them, a large language model, or LLM, provides the core capabilities.
+
+00:00:30.330 --> 00:00:34.806
+LLMs are easy to use: you type a question, and you get an answer back.
+
+00:00:34.806 --> 00:00:40.370
+But they are powerful, with very wide applications, especially in software engineering.
+
+00:00:40.720 --> 00:00:44.520
+Our goal today is to understand the core principles behind them.
+
+00:00:44.870 --> 00:00:47.314
+Before we start, pause and think.
+
+00:00:47.314 --> 00:00:50.276
+In your view, what defines a good model?
+
+00:00:50.276 --> 00:00:53.830
+Keep your answer in mind. We'll come back to it.
+
+00:00:54.600 --> 00:00:57.577
+A language model does one simple thing.
+
+00:00:57.577 --> 00:01:01.240
+It reads some text, and predicts the next token.
+
+00:01:01.590 --> 00:01:03.888
+A token is a small piece of text.
+
+00:01:03.888 --> 00:01:07.510
+Often it's a whole word, sometimes just part of one.
+
+00:01:07.860 --> 00:01:10.962
+Give the model the prompt, 'LLMs are'.
+
+00:01:10.962 --> 00:01:13.900
+It predicts the next token: 'Large'.
+
+00:01:14.250 --> 00:01:19.308
+Now add that token to the prompt, and ask again.
+
+00:01:19.308 --> 00:01:24.050
+LLMs are Large. The model predicts: Language.
+
+00:01:24.400 --> 00:01:28.370
+Once more. LLMs are Large Language.
+
+00:01:28.370 --> 00:01:31.320
+The next token is: Models.
+
+00:01:31.670 --> 00:01:33.846
+That is next-token prediction.
+
+00:01:33.846 --> 00:01:40.590
+The whole sentence is built one token at a time, and each new token goes back into the input.
+
+00:01:41.190 --> 00:01:44.635
+So how does an LLM answer a question?
+
+00:01:44.635 --> 00:01:46.590
+Exactly the same way.
+
+00:01:46.940 --> 00:01:49.986
+We ask: What is Nobel Prize of Computing?
+
+00:01:49.986 --> 00:01:54.220
+The model predicts the first token of the answer: Turing.
+
+00:01:54.570 --> 00:02:02.050
+Then the question plus Turing goes back in, and the model predicts Award, as in Turing Award.
+
+00:02:02.400 --> 00:02:03.475
+One more round.
+
+00:02:03.475 --> 00:02:08.060
+This time the model predicts a special token that means the end.
+
+00:02:08.060 --> 00:02:08.920
+So it stops.
+
+00:02:09.270 --> 00:02:14.819
+The answer, Turing Award, was never stored anywhere as a whole.
+
+00:02:14.819 --> 00:02:17.550
+It was produced token by token.
+
+00:02:18.333 --> 00:02:23.399
+Now you try. Roses are red, violets are, what?
+
+00:02:23.399 --> 00:02:28.133
+And: I opened the fridge and found a, what?
+
+00:02:28.683 --> 00:02:31.904
+For the first, almost everyone says blue.
+
+00:02:31.904 --> 00:02:38.347
+For the second, there are many good answers: milk, some leftovers, nothing at all.
+
+00:02:38.347 --> 00:02:41.803
+That difference is the key to the next idea.
+
+00:02:42.153 --> 00:02:45.039
+How does a model choose the next token?
+
+00:02:45.039 --> 00:02:48.073
+There is a huge space of possible tokens.
+
+00:02:48.423 --> 00:02:51.857
+So the model doesn't output one token.
+
+00:02:51.857 --> 00:02:56.647
+It gives every possible token a score, a probability.
+
+00:02:56.647 --> 00:03:07.943
+After our question and the word Turing, the token Award might get 0.5, Home 0.2, and words like 'at' or 'how' almost nothing.
+
+00:03:08.293 --> 00:03:11.682
+This is called the next-token probability distribution.
+
+00:03:11.682 --> 00:03:15.933
+The model then picks a token from it, usually one of the likely ones.
+
+00:03:16.283 --> 00:03:20.261
+Every step of the answer has its own distribution.
+
+00:03:20.261 --> 00:03:23.363
+Turing, then Award, then the end token.
+
+00:03:23.713 --> 00:03:26.093
+What is the problem with this?
+
+00:03:26.093 --> 00:03:28.313
+The output is probabilistic.
+
+00:03:28.863 --> 00:03:37.095
+Ask the same question twice, and the first token could be Turing, or it could be 'It', as in, 'It is the Turing Award'.
+
+00:03:37.095 --> 00:03:40.623
+Both are fine here. Still, the output is uncertain.
+
+00:03:40.973 --> 00:03:44.768
+So here is one answer to our earlier question.
+
+00:03:44.768 --> 00:03:50.213
+A better model has a more accurate probability for the next token.
+
+00:03:51.000 --> 00:03:55.123
+Next-token prediction sounds easy, but it is a real challenge.
+
+00:03:55.123 --> 00:03:56.320
+Look at this code.
+
+00:03:56.670 --> 00:04:00.018
+Numbers equals a list from 1 to 5.
+
+00:04:00.018 --> 00:04:03.661
+Then: result equals. What comes next?
+
+00:04:03.661 --> 00:04:06.910
+Max of numbers? Min? Sum? Length?
+
+00:04:07.260 --> 00:04:12.126
+To predict well, the model has to understand what the code is meant to do.
+
+00:04:12.126 --> 00:04:15.348
+Pick the correct function name and variable name.
+
+00:04:15.348 --> 00:04:16.860
+And close the brackets.
+
+00:04:17.210 --> 00:04:24.730
+So a good next-token predictor has to understand the code, not just the words.
+
+00:04:25.500 --> 00:04:27.495
+What is inside the model?
+
+00:04:27.495 --> 00:04:30.367
+Think of it as a function, called f.
+
+00:04:30.367 --> 00:04:40.020
+It takes an input, x, such as a user task or some incomplete code, and returns f of x, the distribution over next tokens.
+
+00:04:40.370 --> 00:04:44.019
+In school, a function might be a times x, plus b.
+
+00:04:44.019 --> 00:04:46.179
+Here a and b are the weights.
+
+00:04:46.179 --> 00:04:49.530
+Change the weights, and the function changes.
+
+00:04:49.880 --> 00:04:54.840
+An LLM is the same idea, with a huge number of weights.
+
+00:04:55.440 --> 00:05:04.560
+For example, one open model on Hugging Face, called GPT-OSS-120B, has about 120 billion parameters.
+
+00:05:04.910 --> 00:05:08.204
+The structure of this function is called the Transformer.
+
+00:05:08.204 --> 00:05:12.190
+We won't go into its details here, because this is not an LLM course.
+
+00:05:12.967 --> 00:05:16.167
+So where do all these weights come from?
+
+00:05:16.167 --> 00:05:19.607
+They are learned from data, of three kinds.
+
+00:05:19.957 --> 00:05:25.037
+First, public data from the internet, such as GitHub and Stack Overflow.
+
+00:05:25.387 --> 00:05:35.147
+Second, annotation data: people write examples, such as this list of numbers, and the right answer, result equals sum of numbers.
+
+00:05:35.497 --> 00:05:37.427
+Third, user response data.
+
+00:05:37.427 --> 00:05:43.737
+When you click thumbs up on one answer, and thumbs down on another, that is feedback.
+
+00:05:44.087 --> 00:05:48.148
+Each kind of data feeds one stage of training.
+
+00:05:48.148 --> 00:05:50.972
+Pre-training uses internet data.
+
+00:05:50.972 --> 00:05:55.651
+Supervised fine-tuning, or SFT, uses annotation data.
+
+00:05:55.651 --> 00:06:02.447
+And reinforcement learning with human feedback, or RLHF, uses user responses.
+
+00:06:03.047 --> 00:06:04.766
+The stages run in order.
+
+00:06:04.766 --> 00:06:07.990
+Each stage's output is the input of the next.
+
+00:06:07.990 --> 00:06:11.070
+We start from a model with default weights.
+
+00:06:11.070 --> 00:06:17.087
+Pre-training gives version 1, SFT gives version 2, and RLHF gives the final version.
+
+00:06:17.087 --> 00:06:20.167
+The last two together are called alignment.
+
+00:06:20.967 --> 00:06:23.092
+Let's start with pre-training.
+
+00:06:23.092 --> 00:06:25.287
+It needs a huge amount of data.
+
+00:06:25.637 --> 00:06:28.591
+The trick is called self-supervised learning.
+
+00:06:28.591 --> 00:06:32.397
+Take a line of code from the internet: print, hello world.
+
+00:06:32.747 --> 00:06:35.010
+Cut it into training examples.
+
+00:06:35.010 --> 00:06:38.705
+Given 'print', the next token is an open bracket.
+
+00:06:38.705 --> 00:06:43.380
+Given 'print' and the bracket, the next token is a quote mark.
+
+00:06:43.380 --> 00:06:46.547
+And so on. The text is its own answer key.
+
+00:06:46.897 --> 00:06:52.427
+The model predicts, compares with the real next token, and updates its weights.
+
+00:06:52.427 --> 00:06:57.537
+Very little human effort is involved, so it scales to the whole internet.
+
+00:06:58.137 --> 00:07:00.232
+How large is the data?
+
+00:07:00.232 --> 00:07:05.184
+Llama 3 was pre-trained on about 15 trillion tokens.
+
+00:07:05.184 --> 00:07:08.897
+DeepSeek V4 used more than 32 trillion.
+
+00:07:09.247 --> 00:07:14.104
+Imagine printing 15 trillion tokens, 1,000 tokens per page.
+
+00:07:14.104 --> 00:07:20.607
+If 100 sheets are 1 centimeter thick, the stack would be 1,500 kilometers tall.
+
+00:07:20.957 --> 00:07:30.997
+And if you read one page every 10 seconds, without ever stopping, it would take you about 4,756 years.
+
+00:07:31.767 --> 00:07:35.103
+But what happens when the data is used up?
+
+00:07:35.103 --> 00:07:37.247
+There is only one internet.
+
+00:07:37.797 --> 00:07:42.223
+And more and more new text on the web is written by AI.
+
+00:07:42.223 --> 00:07:44.798
+It all starts to sound the same.
+
+00:07:44.798 --> 00:07:49.787
+For example, the familiar pattern: not this, but instead that.
+
+00:07:49.787 --> 00:07:51.637
+We lose our uniqueness.
+
+00:07:51.987 --> 00:07:56.407
+So with a limited training budget, how should we spend it?
+
+00:07:56.407 --> 00:08:02.046
+More training data? More model parameters? Both? A different architecture?
+
+00:08:02.046 --> 00:08:05.627
+These questions are studied as the scaling law.
+
+00:08:05.977 --> 00:08:10.377
+For Transformer models there is a simple approximation.
+
+00:08:10.377 --> 00:08:18.217
+Compute, C, is about 6, times the number of parameters, N, times the number of training tokens, D.
+
+00:08:18.217 --> 00:08:22.057
+Compute is counted in floating point operations.
+
+00:08:22.407 --> 00:08:30.525
+For Llama 3, that is 6, times 70 billion parameters, times 15 trillion tokens.
+
+00:08:30.525 --> 00:08:34.687
+About 6.3 times 10 to the 24 operations.
+
+00:08:35.037 --> 00:08:41.997
+Researchers then vary the data, the model size, and the compute, and watch how the loss changes.
+
+00:08:42.347 --> 00:08:47.513
+The original scaling-law study found smooth, steady curves.
+
+00:08:47.513 --> 00:08:54.867
+As compute, data, and parameters grow, the test loss goes down in a predictable way.
+
+00:08:55.667 --> 00:08:59.372
+Does the model remember everything it has seen?
+
+00:08:59.372 --> 00:09:01.027
+No. It compresses it.
+
+00:09:01.377 --> 00:09:08.584
+Suppose it has seen 'def add, return a plus b', and 'def multiply, return a times b'.
+
+00:09:08.584 --> 00:09:15.537
+It learns the pattern: a function name, two inputs, and one operator between them.
+
+00:09:15.887 --> 00:09:26.367
+So when it sees a new function called 'divide', it can write 'return a divided by b', even if it never saw that exact function.
+
+00:09:26.967 --> 00:09:29.664
+So is more data always better?
+
+00:09:29.664 --> 00:09:34.249
+No. A page full of nonsense teaches nothing useful.
+
+00:09:34.249 --> 00:09:36.047
+Quality matters too.
+
+00:09:36.397 --> 00:09:39.970
+One way to clean data is called Rephrasing the Web.
+
+00:09:39.970 --> 00:09:45.154
+Another model rewrites noisy web text into clear, Wikipedia-style English.
+
+00:09:45.154 --> 00:09:50.477
+In that study, the model reached the same accuracy about three times faster.
+
+00:09:50.827 --> 00:09:58.277
+After pre-training, the model can produce the correct answer, but often its chance of doing so is not good enough.
+
+00:09:58.277 --> 00:10:02.067
+It is like a rough gem that still needs careful polishing.
+
+00:10:02.417 --> 00:10:09.937
+The next two stages, SFT and reinforcement learning, increase the chance of the correct answer.
+
+00:10:10.734 --> 00:10:13.340
+Stage two: supervised fine-tuning.
+
+00:10:13.340 --> 00:10:17.094
+It teaches the model how it should answer a user.
+
+00:10:17.444 --> 00:10:21.064
+A pre-trained model is good at continuing code.
+
+00:10:21.064 --> 00:10:25.684
+Give it `def divide`, and it writes `return a divided by b`.
+
+00:10:26.034 --> 00:10:32.477
+But ask it, 'Write a Python function that divides two numbers,' and it might reply, 'I cannot write it.'
+
+00:10:32.477 --> 00:10:34.954
+It has never learned to be an assistant.
+
+00:10:35.304 --> 00:10:40.962
+SFT shows the model pairs of a user request and a good assistant reply.
+
+00:10:40.962 --> 00:10:45.424
+After SFT, the same request gets the function we wanted.
+
+00:10:45.774 --> 00:10:51.750
+SFT uses few, but high-quality, examples to adjust the weights further.
+
+00:10:51.750 --> 00:10:59.914
+The Llama 2 team reported that a few tens of thousands of carefully written examples were enough.
+
+00:10:59.914 --> 00:11:01.934
+Quality is all you need.
+
+00:11:02.701 --> 00:11:06.815
+Stage three: reinforcement learning with human feedback.
+
+00:11:06.815 --> 00:11:10.341
+It teaches the model which answer humans prefer.
+
+00:11:10.691 --> 00:11:18.131
+For the same request, the model might write a plain divide function, or one that first checks whether `b` equals zero.
+
+00:11:18.131 --> 00:11:20.211
+People mark the second as better.
+
+00:11:20.561 --> 00:11:24.018
+Notice: there is no new training data here.
+
+00:11:24.018 --> 00:11:28.921
+Preferences alone are used as feedback to adjust the weights.
+
+00:11:29.521 --> 00:11:30.821
+Try it yourself.
+
+00:11:30.821 --> 00:11:37.563
+A student says: 'I'm starting to study the day before the exam. Is there any hope?'
+
+00:11:37.563 --> 00:11:41.463
+Answer A: 'Of course, you can get a high score.'
+
+00:11:41.463 --> 00:11:47.880
+Answer B asks about the exam scope and your time, and offers to set priorities.
+
+00:11:47.880 --> 00:11:51.292
+Answer C: 'One day is usually not enough.'
+
+00:11:51.292 --> 00:11:53.241
+Which one do you prefer?
+
+00:11:53.791 --> 00:11:57.760
+Many people pick B: it is honest, and it helps.
+
+00:11:57.760 --> 00:12:01.391
+That kind of judgment is what RLHF teaches.
+
+00:12:01.741 --> 00:12:05.158
+Where does reinforcement learning come from?
+
+00:12:05.158 --> 00:12:12.225
+An actor looks at an observation, takes an action, and the environment gives back a reward.
+
+00:12:12.225 --> 00:12:16.341
+The goal is a policy that maximizes the total reward.
+
+00:12:16.691 --> 00:12:21.764
+In the game of Go, AlphaGo sees the board and chooses the next move.
+
+00:12:21.764 --> 00:12:27.731
+The reward is zero for most moves, plus one for a win, and minus one for a loss.
+
+00:12:28.081 --> 00:12:30.462
+An LLM is the same picture.
+
+00:12:30.462 --> 00:12:35.401
+The prompt is the board, and the next token is the move.
+
+00:12:36.001 --> 00:12:37.882
+The reward really matters.
+
+00:12:37.882 --> 00:12:48.445
+In a well-known example, an agent in a boat-racing game learned to score more by circling and hitting the same targets than by finishing the race.
+
+00:12:48.445 --> 00:12:52.641
+It optimized exactly what we rewarded, not what we wanted.
+
+00:12:53.435 --> 00:12:54.939
+One more question.
+
+00:12:54.939 --> 00:12:57.195
+Must tokens always be text?
+
+00:12:57.745 --> 00:12:57.962
+No.
+
+00:12:57.962 --> 00:13:01.153
+Images and audio can be cut into tokens too.
+
+00:13:01.153 --> 00:13:10.145
+A multimodal model turns an image into patches, encodes them as visual tokens, and processes them together with text tokens.
+
+00:13:10.495 --> 00:13:12.616
+This even works for code.
+
+00:13:12.616 --> 00:13:17.199
+One recent study rendered a piece of code as an image.
+
+00:13:17.199 --> 00:13:19.575
+As text, it took 110 tokens.
+
+00:13:19.925 --> 00:13:26.585
+As an image, it could be compressed to 27 visual tokens, about 75% fewer,
+
+00:13:26.585 --> 00:13:30.965
+while the model could still tell the code apart.
+
+00:13:31.735 --> 00:13:34.308
+Finally, which LLMs can we use?
+
+00:13:34.308 --> 00:13:36.135
+There are three kinds.
+
+00:13:36.485 --> 00:13:44.110
+Black-box models, like Gemini, ChatGPT, and Claude, are typically commercial, huge, and powerful.
+
+00:13:44.110 --> 00:13:50.085
+But we don't know how the function `f` works inside, or how it was produced.
+
+00:13:50.435 --> 00:13:52.897
+Open-source models go the other way.
+
+00:13:52.897 --> 00:13:58.163
+You can see the data, the training code, the checkpoints, and the evaluation.
+
+00:13:58.163 --> 00:14:00.078
+We know how `f` is produced.
+
+00:14:00.078 --> 00:14:01.515
+BLOOM is one example.
+
+00:14:01.865 --> 00:14:04.755
+Models with open weights sit in between.
+
+00:14:04.755 --> 00:14:06.996
+Only the parameters are public.
+
+00:14:06.996 --> 00:14:14.006
+We can look inside `f`, download it from sites like Hugging Face, and run it on our own machines.
+
+00:14:14.006 --> 00:14:16.825
+Gemma, Mistral, and Llama are examples.
+
+00:14:17.175 --> 00:14:24.002
+For this course, we will provide API access to two models for every student: Xiaomi's MiMo, and GLM.
+
+00:14:24.002 --> 00:14:29.055
+And with a tool like Ollama, you can run an open model on your own laptop.
+
+00:14:29.405 --> 00:14:38.125
+If you want to go deeper into how LLMs work, Professor Hung-yi Lee of National Taiwan University has an excellent course online.
+
+00:14:38.902 --> 00:14:40.062
+Let's sum up.
+
+00:14:40.412 --> 00:14:44.235
+An LLM predicts the next token, again and again.
+
+00:14:44.235 --> 00:14:49.412
+Each new token is added to the input, until an end token appears.
+
+00:14:49.762 --> 00:14:55.119
+Each prediction is a probability distribution, so the output is uncertain.
+
+00:14:55.119 --> 00:14:58.522
+A better model has more accurate probabilities.
+
+00:14:58.872 --> 00:15:04.188
+The model is a function with billions of weights, learned in three stages:
+
+00:15:04.188 --> 00:15:09.792
+pre-training on internet data, SFT on examples, and RLHF on human preferences.
+
+00:15:10.142 --> 00:15:11.862
+Here's something to try.
+
+00:15:11.862 --> 00:15:16.663
+Ask a chat model the same question three times, in three new chats.
+
+00:15:16.663 --> 00:15:18.168
+Do the answers match?
+
+00:15:18.168 --> 00:15:20.462
+Now you know why they might not.
+
+00:15:21.235 --> 00:15:22.872
+That's all for this lecture.
+
+00:15:22.872 --> 00:15:27.315
+Thank you for watching, and see you in the next class: Principles of Agents.
+

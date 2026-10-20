@@ -1,0 +1,539 @@
+WEBVTT
+
+00:00:02.900 --> 00:00:07.832
+Welcome to CSC4801, AI-assisted Software Engineering.
+
+00:00:07.832 --> 00:00:12.020
+This is Lecture Seven: Requirements Exercise.
+
+00:00:12.800 --> 00:00:22.301
+Our course follows the software life cycle: requirement engineering, coding, testing and verification, repair, and finally AI ops.
+
+00:00:22.301 --> 00:00:24.640
+We are still at the first stage.
+
+00:00:24.990 --> 00:00:28.174
+Requirement engineering itself is a cycle.
+
+00:00:28.174 --> 00:00:38.030
+We elicit requirements from people, model them, write them down as a specification, validate them, and manage them as they change.
+
+00:00:38.380 --> 00:00:40.643
+Today we ask a practical question.
+
+00:00:40.643 --> 00:00:47.300
+What happens when the reader of a requirement document is not a human developer, but a coding agent?
+
+00:00:47.650 --> 00:00:50.499
+Requirement documents have real strengths here.
+
+00:00:50.499 --> 00:00:55.530
+First, they force us to think before we act, instead of jumping straight into code.
+
+00:00:55.880 --> 00:01:00.502
+Second, they fit the software engineering life cycle we already know.
+
+00:01:00.502 --> 00:01:04.120
+Design, tests, and reviews can all point back to them.
+
+00:01:04.470 --> 00:01:07.788
+And third, they help us navigate AI agents.
+
+00:01:07.788 --> 00:01:15.350
+A written requirement is a map: it tells the agent where to go, and tells us whether it got there.
+
+00:01:16.133 --> 00:01:17.809
+But there is a weakness.
+
+00:01:17.809 --> 00:01:24.093
+Requirements are usually written in informal language, and informal language is ambiguous.
+
+00:01:24.443 --> 00:01:25.884
+Take this requirement.
+
+00:01:25.884 --> 00:01:31.123
+If the user's balance is insufficient, the system should reject the transaction.
+
+00:01:31.473 --> 00:01:32.503
+Pause and think.
+
+00:01:32.503 --> 00:01:37.713
+If the balance is exactly equal to the amount, should the transaction go through?
+
+00:01:38.263 --> 00:01:42.707
+One reading says reject when the balance is less than the amount.
+
+00:01:42.707 --> 00:01:46.536
+Another says reject when it is less than or equal to it.
+
+00:01:46.536 --> 00:01:47.903
+Both are reasonable.
+
+00:01:48.253 --> 00:01:51.624
+A human developer might walk over and ask.
+
+00:01:51.624 --> 00:01:56.840
+An agent usually just picks one, quietly, and writes code for it.
+
+00:01:56.840 --> 00:02:00.933
+The ambiguity becomes a bug that nobody decided on.
+
+00:02:01.700 --> 00:02:07.300
+So how do we use requirement documents with coding agents, without falling into this trap?
+
+00:02:07.650 --> 00:02:10.829
+One answer is spec-driven development.
+
+00:02:10.829 --> 00:02:19.530
+It is a methodology for the LLM era: write a clear and detailed specification before any implementation.
+
+00:02:19.880 --> 00:02:22.836
+Its supporters make a bold argument.
+
+00:02:22.836 --> 00:02:26.941
+The specification is more important than the code.
+
+00:02:26.941 --> 00:02:33.920
+When an agent can regenerate code quickly, the spec becomes the real source of truth.
+
+00:02:34.520 --> 00:02:38.489
+One popular toolkit for this is called Spec Kit, from GitHub.
+
+00:02:38.489 --> 00:02:44.800
+It works with many AI coding agents, and turns spec-driven development into a series of commands.
+
+00:02:45.150 --> 00:02:47.426
+Its life cycle has 5 stages.
+
+00:02:47.426 --> 00:02:50.109
+The constitution sets guardrails.
+
+00:02:50.109 --> 00:02:52.547
+Specify defines what to build.
+
+00:02:52.547 --> 00:02:54.904
+Plan designs how to build it.
+
+00:02:54.904 --> 00:02:58.156
+Tasks breaks the work into atomic units.
+
+00:02:58.156 --> 00:03:00.350
+And implement just does it.
+
+00:03:01.134 --> 00:03:03.144
+Stage 1 is the constitution.
+
+00:03:03.144 --> 00:03:06.374
+It sets the principles for the whole project.
+
+00:03:06.724 --> 00:03:13.324
+That includes the technical stack and architecture, security and compliance standards, and performance benchmarks.
+
+00:03:13.674 --> 00:03:22.714
+It is saved in the project folder, in a file called constitution.md, so every later step can read it.
+
+00:03:23.064 --> 00:03:24.372
+Here is an example.
+
+00:03:24.372 --> 00:03:31.260
+This project follows a library-first approach: every feature is built as a standalone library first.
+
+00:03:31.260 --> 00:03:34.015
+We use test-driven development strictly.
+
+00:03:34.015 --> 00:03:37.184
+And we prefer functional programming patterns.
+
+00:03:37.534 --> 00:03:40.212
+These principles then become gates.
+
+00:03:40.212 --> 00:03:44.039
+The plan template turns each one into a check box.
+
+00:03:44.039 --> 00:03:48.707
+Is the feature a standalone library? Are tests written first?
+
+00:03:48.707 --> 00:03:52.534
+A plan must pass these checks before work goes on.
+
+00:03:53.334 --> 00:03:56.034
+Stage 2 is the specification.
+
+00:03:56.034 --> 00:03:59.014
+A good spec answers 3 questions.
+
+00:03:59.364 --> 00:04:03.724
+Outcomes: what should the system achieve when the work is finished?
+
+00:04:04.074 --> 00:04:08.614
+Boundaries: what is in scope, and what is explicitly out of scope.
+
+00:04:08.614 --> 00:04:13.154
+This stops the agent from creeping into features nobody asked for.
+
+00:04:13.504 --> 00:04:18.584
+Constraints: earlier decisions and technical limits the agent must respect.
+
+00:04:18.934 --> 00:04:21.872
+Our running example is a photo organizer.
+
+00:04:21.872 --> 00:04:27.105
+Build an application that helps me organize my photos in separate albums.
+
+00:04:27.105 --> 00:04:33.054
+Albums are grouped by date, and can be reordered by drag and drop on the main page.
+
+00:04:33.404 --> 00:04:36.387
+Albums are never nested inside other albums.
+
+00:04:36.387 --> 00:04:40.524
+And inside each album, photos are previewed in a tile layout.
+
+00:04:40.874 --> 00:04:44.428
+Notice what this prompt does not say.
+
+00:04:44.428 --> 00:04:48.175
+No language, no framework, no database.
+
+00:04:48.175 --> 00:04:52.114
+The spec describes what and why, not how.
+
+00:04:52.714 --> 00:04:57.503
+The toolkit also writes a quality checklist for the spec itself.
+
+00:04:57.503 --> 00:05:06.034
+Does it avoid implementation details? Are the requirements testable and unambiguous? Is the scope clearly bounded?
+
+00:05:06.834 --> 00:05:09.183
+Stage 3 is the technical plan.
+
+00:05:09.183 --> 00:05:14.274
+The plan file is the bridge between business intent and raw code.
+
+00:05:14.624 --> 00:05:22.464
+It defines data models and schemas, API contracts and endpoints, the component architecture, and the tech stack.
+
+00:05:22.814 --> 00:05:27.987
+For our photo organizer, we say: use Vite, with as few libraries as possible.
+
+00:05:27.987 --> 00:05:31.414
+Use vanilla HTML, CSS, and JavaScript where we can.
+
+00:05:31.764 --> 00:05:38.804
+Images are never uploaded anywhere, and metadata is stored in a local SQLite database.
+
+00:05:39.154 --> 00:05:43.147
+Now the how is written down too, but in a separate file.
+
+00:05:43.147 --> 00:05:47.354
+If we later change the tech stack, the spec stays the same.
+
+00:05:48.134 --> 00:05:52.390
+Before breaking down the work, Spec Kit can generate a checklist.
+
+00:05:52.390 --> 00:05:55.534
+Think of it as unit tests for your requirements.
+
+00:05:55.884 --> 00:06:00.871
+It asks questions such as: are all the main user journeys documented?
+
+00:06:00.871 --> 00:06:06.004
+Are edge cases defined, like photos with no date, or very large albums?
+
+00:06:06.354 --> 00:06:13.554
+The goal is to confirm that the spec is complete, clear, and consistent, before any code exists.
+
+00:06:13.904 --> 00:06:15.385
+Next come the tasks.
+
+00:06:15.385 --> 00:06:21.384
+The plan is broken into atomic units, each one a small change that can be tested.
+
+00:06:21.734 --> 00:06:29.214
+This keeps the agent focused on one change at a time, and every change is checked against the original spec.
+
+00:06:29.814 --> 00:06:40.774
+At this point, the feature folder contains the whole set: spec, plan, and tasks, plus a data model, API contracts, research notes, and the checklist.
+
+00:06:41.567 --> 00:06:44.876
+With that many documents, they can drift apart.
+
+00:06:44.876 --> 00:06:46.847
+So there is an analyze step.
+
+00:06:47.197 --> 00:06:55.307
+It reads the spec, the plan, and the tasks together, and reports conflicts, gaps, and ambiguities across them.
+
+00:06:55.307 --> 00:06:58.477
+It only reads; it does not change any file.
+
+00:06:58.827 --> 00:07:00.926
+Only then comes implementation.
+
+00:07:00.926 --> 00:07:05.667
+The agent takes the task list and writes the code, one task at a time.
+
+00:07:06.017 --> 00:07:08.003
+How is all this built?
+
+00:07:08.003 --> 00:07:19.377
+Each command is packaged as an agent skill: a folder with instructions for one step, such as specify, plan, tasks, or analyze.
+
+00:07:19.727 --> 00:07:21.213
+So there is no magic.
+
+00:07:21.213 --> 00:07:28.927
+Spec-driven development is a set of well-written prompts, plus a discipline about which document comes first.
+
+00:07:29.700 --> 00:07:30.826
+Now, the exercise.
+
+00:07:30.826 --> 00:07:35.580
+You can practice spec-driven development yourself, even without the toolkit.
+
+00:07:35.930 --> 00:07:44.690
+There are 2 goals: use the Spec Kit workflow to analyze requirements, and find inconsistencies in a set of requirements.
+
+00:07:45.040 --> 00:07:49.345
+Let's walk through the 3 files for a course registration system.
+
+00:07:49.345 --> 00:07:50.960
+First, the constitution.
+
+00:07:51.310 --> 00:07:59.503
+Tech stack: React and TypeScript on the front end, Node and Express on the back end, and PostgreSQL.
+
+00:07:59.503 --> 00:08:03.927
+Principles: library-first, test-driven, and API-first.
+
+00:08:03.927 --> 00:08:09.990
+Security: no hard-coded credentials, validate every input, and HTTPS only.
+
+00:08:10.340 --> 00:08:11.572
+Second, the spec.
+
+00:08:11.572 --> 00:08:20.340
+Outcomes: students search and register for courses, professors manage rosters, and admins configure registration periods.
+
+00:08:20.690 --> 00:08:24.336
+Out of scope: payments, grades, and attendance.
+
+00:08:24.336 --> 00:08:30.930
+Constraints: support 1,000 concurrent users, and use the university's single sign-on.
+
+00:08:31.280 --> 00:08:32.543
+Third, the plan.
+
+00:08:32.543 --> 00:08:36.334
+Data models for course, student, and enrollment.
+
+00:08:36.334 --> 00:08:40.913
+Endpoints to search courses, register, and fetch a roster.
+
+00:08:40.913 --> 00:08:43.440
+And the components of each page.
+
+00:08:44.233 --> 00:08:48.990
+The second part is the heart of the exercise: requirement verification.
+
+00:08:48.990 --> 00:08:52.473
+Here are 6 requirements for a smart home controller.
+
+00:08:52.823 --> 00:08:57.045
+1: the system shall control all lights in the house.
+
+00:08:57.045 --> 00:09:00.130
+2: it shall respond to voice commands.
+
+00:09:00.130 --> 00:09:03.783
+3: it shall learn user preferences over time.
+
+00:09:04.133 --> 00:09:08.357
+4: it shall work without an internet connection.
+
+00:09:08.357 --> 00:09:12.669
+5: it shall integrate with Alexa and Google Home.
+
+00:09:12.669 --> 00:09:16.013
+6: it shall be affordable, under $100.
+
+00:09:16.363 --> 00:09:17.056
+Your turn.
+
+00:09:17.056 --> 00:09:20.936
+Pause the video now, and find as many issues as you can.
+
+00:09:20.936 --> 00:09:28.003
+Look for words you can't test, requirements that fight each other, and things that are simply missing.
+
+00:09:28.553 --> 00:09:28.858
+Ready?
+
+00:09:28.858 --> 00:09:30.433
+Let's go through them together.
+
+00:09:31.233 --> 00:09:34.393
+It helps to sort the issues into categories.
+
+00:09:34.743 --> 00:09:35.483
+Ambiguity.
+
+00:09:35.483 --> 00:09:37.703
+Requirement 6 says affordable.
+
+00:09:37.703 --> 00:09:39.108
+Affordable to whom?
+
+00:09:39.108 --> 00:09:43.103
+A student and a landlord would give different answers.
+
+00:09:43.453 --> 00:09:44.268
+Conflict.
+
+00:09:44.268 --> 00:09:48.706
+Requirement 4 says it works without the internet.
+
+00:09:48.706 --> 00:09:54.139
+But Requirement 5 needs Alexa, and Alexa needs the internet.
+
+00:09:54.139 --> 00:09:56.493
+Both cannot be fully true.
+
+00:09:57.093 --> 00:09:57.649
+Missing.
+
+00:09:57.649 --> 00:10:00.079
+What happens during a power outage?
+
+00:10:00.079 --> 00:10:02.093
+Nothing in the list tells us.
+
+00:10:02.443 --> 00:10:03.489
+Unmeasurable.
+
+00:10:03.489 --> 00:10:07.269
+Learn user preferences: how much, and how fast?
+
+00:10:07.269 --> 00:10:09.923
+There is no way to say it passed.
+
+00:10:10.273 --> 00:10:11.118
+Incomplete.
+
+00:10:11.118 --> 00:10:14.191
+There is no security requirement at all.
+
+00:10:14.191 --> 00:10:17.033
+What if someone hacks into the house?
+
+00:10:17.383 --> 00:10:18.978
+Did you find others?
+
+00:10:18.978 --> 00:10:23.521
+All lights is vague too: which lights, from which brands?
+
+00:10:23.521 --> 00:10:27.109
+And which voice commands, in which languages?
+
+00:10:27.109 --> 00:10:28.623
+Good catches count.
+
+00:10:29.400 --> 00:10:31.619
+Finding issues is half the job.
+
+00:10:31.619 --> 00:10:37.560
+Now we rewrite each requirement to be specific, consistent, complete, and testable.
+
+00:10:37.910 --> 00:10:43.046
+Specific means replacing vague words with measurable criteria.
+
+00:10:43.046 --> 00:10:47.021
+Consistent means resolving conflicts explicitly.
+
+00:10:47.021 --> 00:10:50.169
+Complete means adding what is missing.
+
+00:10:50.169 --> 00:10:54.310
+Testable means every requirement has a clear test.
+
+00:10:54.660 --> 00:10:56.376
+Take Requirement 6.
+
+00:10:56.376 --> 00:11:00.980
+Before: the system shall be affordable, under $100.
+
+00:11:01.330 --> 00:11:07.751
+After: the total cost of hardware and software shall not exceed 100 US dollars,
+
+00:11:07.751 --> 00:11:11.084
+at retail pricing, as of the launch date.
+
+00:11:11.084 --> 00:11:16.610
+And we name the test: a bill of materials review, and a price check.
+
+00:11:17.210 --> 00:11:21.068
+Then run the LLM verification again on the new set.
+
+00:11:21.068 --> 00:11:23.261
+Did you introduce new issues?
+
+00:11:23.261 --> 00:11:25.530
+Are all the old ones resolved?
+
+00:11:25.880 --> 00:11:28.880
+This is the verification loop.
+
+00:11:28.880 --> 00:11:34.480
+You write, you check, you fix, and then you check again.
+
+00:11:35.080 --> 00:11:37.528
+Some tools build this whole workflow in.
+
+00:11:37.528 --> 00:11:42.240
+Kiro, for example, is a coding agent designed around spec-driven development.
+
+00:11:43.034 --> 00:11:44.394
+Let's sum up.
+
+00:11:44.744 --> 00:11:49.179
+Requirement documents help agents: they make us think first,
+
+00:11:49.179 --> 00:11:51.397
+and they give the agent a map.
+
+00:11:51.397 --> 00:11:56.424
+But informal language is ambiguous, and an agent will quietly guess.
+
+00:11:56.774 --> 00:12:00.434
+Spec-driven development puts the spec first:
+
+00:12:00.434 --> 00:12:04.677
+constitution, specify, plan, tasks, then implement,
+
+00:12:04.677 --> 00:12:08.254
+with checklists and analysis to catch gaps.
+
+00:12:08.604 --> 00:12:14.342
+And every requirement should be specific, consistent, complete, and testable,
+
+00:12:14.342 --> 00:12:15.684
+checked in a loop.
+
+00:12:16.034 --> 00:12:17.970
+Here is something to try.
+
+00:12:17.970 --> 00:12:21.455
+Take a feature request from your own project,
+
+00:12:21.455 --> 00:12:26.490
+and ask an agent to list its ambiguities before writing any code.
+
+00:12:26.490 --> 00:12:28.194
+How many did you miss?
+
+00:12:28.967 --> 00:12:30.781
+That's all for this lecture.
+
+00:12:30.781 --> 00:12:34.927
+Thank you for watching, and see you in the next class, Coding 1.
+

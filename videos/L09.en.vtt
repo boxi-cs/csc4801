@@ -1,0 +1,569 @@
+WEBVTT
+
+00:00:02.900 --> 00:00:07.978
+Welcome to CSC4801, AI-assisted Software Engineering.
+
+00:00:07.978 --> 00:00:10.660
+This is Lecture 9: Coding 2.
+
+00:00:11.433 --> 00:00:17.273
+We are still in the coding stage of the software life cycle, between requirements and testing.
+
+00:00:17.623 --> 00:00:25.144
+Remember the 3 pillars of AI for coding: the model, the harness around it, and the benchmarks that measure it.
+
+00:00:25.144 --> 00:00:29.383
+Today we look at 2 of them. First the harness, then the model.
+
+00:00:29.733 --> 00:00:31.759
+We start with a hard question.
+
+00:00:31.759 --> 00:00:37.973
+How do we handle code at the level of a whole repository, where the context is far too long?
+
+00:00:38.523 --> 00:00:40.407
+There are 3 challenges.
+
+00:00:40.407 --> 00:00:45.403
+First, the context is simply too long to fit into one prompt.
+
+00:00:45.753 --> 00:00:48.036
+Second, files depend on each other.
+
+00:00:48.036 --> 00:00:54.753
+The line you are writing may call a shared utility, or read a configuration, that lives somewhere else.
+
+00:00:55.103 --> 00:01:02.283
+Third, every repository has its own structure: its naming conventions and its coding style.
+
+00:01:02.283 --> 00:01:06.543
+Code that ignores them may run, but it doesn't belong.
+
+00:01:07.333 --> 00:01:11.347
+One early answer is called Repo-Level Prompt Generation.
+
+00:01:11.347 --> 00:01:20.093
+Its idea is to build the prompt from the repository itself, mixing in its structure and relevant context from other files.
+
+00:01:20.443 --> 00:01:22.931
+Here is the example from the paper.
+
+00:01:22.931 --> 00:01:30.963
+We are editing a Java file, and the cursor sits at a hole: the model must complete a call on an object called mg.
+
+00:01:31.313 --> 00:01:34.029
+The method we need is not in this file.
+
+00:01:34.029 --> 00:01:38.833
+It is defined in another file, the one that the current file imports.
+
+00:01:39.183 --> 00:01:49.023
+A prompt engineer prepares a list of prompt proposals, each one a different place to take context from: the imported file, a sibling file, and so on.
+
+00:01:49.373 --> 00:01:54.259
+A classifier looks at the hole and predicts which proposal will help most.
+
+00:01:54.259 --> 00:01:57.693
+Here it picks proposal number 14, the imported file.
+
+00:01:58.043 --> 00:02:04.251
+A prompt composer then puts that context in front of the usual code before the hole.
+
+00:02:04.251 --> 00:02:10.163
+Now the model, Codex, can see the method it needs, and fills the hole correctly.
+
+00:02:10.763 --> 00:02:18.483
+This is retrieval-augmented generation, or RAG: first retrieve what is relevant, then generate.
+
+00:02:19.266 --> 00:02:23.261
+A method called Repo Coder takes this one step further.
+
+00:02:23.261 --> 00:02:31.106
+It combines a similarity-based retriever with a pre-trained code language model, and it runs them in a loop.
+
+00:02:31.456 --> 00:02:33.951
+Look at this unfinished function.
+
+00:02:33.951 --> 00:02:40.376
+It copies images, downscales them, and then has to call Col Map, an external program.
+
+00:02:40.726 --> 00:02:47.264
+In the first iteration, the retriever searches the repository for code similar to the unfinished code.
+
+00:02:47.264 --> 00:02:51.046
+It finds a function that also copies and downscales images.
+
+00:02:51.396 --> 00:02:53.654
+The generator writes a completion.
+
+00:02:53.654 --> 00:02:55.048
+But it guesses wrong.
+
+00:02:55.048 --> 00:03:00.956
+It calls a function it names Col Map, with arguments that don't exist in this repository.
+
+00:03:01.306 --> 00:03:02.714
+Pause and think.
+
+00:03:02.714 --> 00:03:07.466
+Is this wrong answer useless? Or can it still help us?
+
+00:03:08.016 --> 00:03:09.369
+Repo Coder uses it.
+
+00:03:09.369 --> 00:03:18.056
+The failed draft names Col Map and its path arguments, so it is a much better search query than the unfinished code alone.
+
+00:03:18.406 --> 00:03:28.566
+In the second iteration, the retriever searches again with the draft, and now it finds the real helper, a function named run_col_map, with its true parameters.
+
+00:03:28.916 --> 00:03:32.083
+The second completion uses it correctly.
+
+00:03:32.083 --> 00:03:37.072
+Retrieve, generate, and retrieve again with what you generated.
+
+00:03:37.072 --> 00:03:40.476
+That is iterative retrieval and generation.
+
+00:03:41.266 --> 00:03:44.970
+Even with good retrieval, there's another danger.
+
+00:03:44.970 --> 00:03:50.034
+LLM-generated code may use packages or functions that do not exist.
+
+00:03:50.034 --> 00:03:52.226
+This is called hallucination.
+
+00:03:52.576 --> 00:03:53.784
+And it is common.
+
+00:03:53.784 --> 00:04:03.015
+A study at the USENIX Security conference measured how often many code models invent package names, in both Python and JavaScript.
+
+00:04:03.015 --> 00:04:05.216
+Every model they tested did it.
+
+00:04:05.566 --> 00:04:06.949
+Why does it matter?
+
+00:04:06.949 --> 00:04:15.246
+Your build fails, or worse: someone can publish a real package under the invented name, and your code installs it.
+
+00:04:15.596 --> 00:04:17.507
+The fix can be simple.
+
+00:04:17.507 --> 00:04:23.932
+Suppose the model writes import pandes, spelled with an E instead of an A.
+
+00:04:23.932 --> 00:04:29.836
+Before trusting it, check the name against the Python Package Index.
+
+00:04:30.186 --> 00:04:34.868
+There is no package spelled that way, but there is pandas.
+
+00:04:34.868 --> 00:04:39.146
+So we correct the import, and only then run the code.
+
+00:04:39.933 --> 00:04:44.933
+Today, one approach dominates all of these techniques: autonomous agents.
+
+00:04:45.283 --> 00:04:52.986
+Instead of a fixed retriever, an agent decides for itself what to search, which files to read, and when to run the code.
+
+00:04:52.986 --> 00:04:56.323
+Retrieval and checking become tools inside its loop.
+
+00:04:56.673 --> 00:04:59.065
+We can even use several agents.
+
+00:04:59.065 --> 00:05:03.230
+A framework called Meta GPT copies a software company.
+
+00:05:03.230 --> 00:05:11.793
+It gives each agent a role: a product manager, an architect, a project manager, an engineer, and a QA engineer.
+
+00:05:12.143 --> 00:05:15.151
+They follow a standard operating procedure.
+
+00:05:15.151 --> 00:05:26.063
+A one-line request, such as write a simple Flappy Bird game, becomes a requirement document, then a system design, then tasks, then code, and finally tests.
+
+00:05:26.413 --> 00:05:31.013
+Each agent checks the work of the one before it, just like a real team.
+
+00:05:31.800 --> 00:05:35.193
+Now let's turn to the second pillar: the model.
+
+00:05:35.193 --> 00:05:38.080
+And a model is only as good as its data.
+
+00:05:38.430 --> 00:05:43.284
+The training datasets of notable AI models have grown enormously over the years.
+
+00:05:43.284 --> 00:05:45.710
+We need more and more high-quality data.
+
+00:05:46.060 --> 00:05:50.935
+Human-written data, like a carefully built benchmark, is high quality.
+
+00:05:50.935 --> 00:05:55.740
+But it is labor-intensive to make, and it may raise privacy concerns.
+
+00:05:56.090 --> 00:06:01.970
+So people use synthetic data: data generated by models themselves.
+
+00:06:02.570 --> 00:06:05.581
+The simplest recipe is called Self-Instruct.
+
+00:06:05.581 --> 00:06:07.839
+Give a model a few seed problems.
+
+00:06:07.839 --> 00:06:10.850
+It writes new problems, and their solutions.
+
+00:06:11.200 --> 00:06:16.680
+Those problem and solution pairs can train the model itself, or train other models.
+
+00:06:17.030 --> 00:06:20.589
+A famous example is Alpaca, from Stanford.
+
+00:06:20.589 --> 00:06:24.910
+They started with 175 seed tasks written by people.
+
+00:06:25.260 --> 00:06:31.301
+A strong OpenAI model expanded them into 52,000 instruction-following examples.
+
+00:06:31.301 --> 00:06:36.500
+Then they fine-tuned Meta's 7-billion-parameter LLaMA model on them.
+
+00:06:37.300 --> 00:06:42.885
+Training a small model on a big model's outputs has a name: knowledge distillation.
+
+00:06:42.885 --> 00:06:47.460
+A large teacher model passes its knowledge to a small student model.
+
+00:06:47.810 --> 00:06:49.160
+Here's an example.
+
+00:06:49.160 --> 00:06:50.585
+Is this email spam?
+
+00:06:50.585 --> 00:06:53.210
+You won a free phone, claim it now.
+
+00:06:53.560 --> 00:07:01.000
+The teacher answers with scores: 90% spam, 8% promotion, 2% normal.
+
+00:07:01.350 --> 00:07:04.103
+A hard label would only say spam.
+
+00:07:04.103 --> 00:07:11.861
+But the teacher's soft scores carry more: promotion is a much closer alternative than normal.
+
+00:07:11.861 --> 00:07:15.030
+The student learns that whole pattern.
+
+00:07:15.630 --> 00:07:17.592
+The recipe has 4 steps.
+
+00:07:17.592 --> 00:07:21.687
+Train the teacher on correctly labeled examples.
+
+00:07:21.687 --> 00:07:25.270
+Ask the teacher for scores on many inputs.
+
+00:07:25.620 --> 00:07:28.742
+Soften those scores with a higher temperature.
+
+00:07:28.742 --> 00:07:34.036
+Then train the student to match both the teacher's scores and the true labels.
+
+00:07:34.036 --> 00:07:36.140
+The loss is the sum of the two.
+
+00:07:36.490 --> 00:07:46.250
+The student can learn different things: the teacher's outputs, its intermediate layers, or the relationships between layers or between data samples.
+
+00:07:46.600 --> 00:07:47.480
+Why distill?
+
+00:07:47.480 --> 00:07:51.514
+Serving a large model can be too slow or too expensive.
+
+00:07:51.514 --> 00:07:55.400
+The student is smaller, faster, and easier to deploy.
+
+00:07:55.750 --> 00:07:56.918
+But watch out.
+
+00:07:56.918 --> 00:08:04.590
+The student may lose some capability, and it can copy the teacher's mistakes and biases too.
+
+00:08:05.367 --> 00:08:07.965
+Self-Instruct makes more problems.
+
+00:08:07.965 --> 00:08:10.181
+But we also want harder ones.
+
+00:08:10.181 --> 00:08:18.127
+A method called Evol-Instruct takes a seed problem and an evolution type, and writes an evolved problem.
+
+00:08:18.477 --> 00:08:20.270
+Start from 1 plus 1.
+
+00:08:20.270 --> 00:08:27.083
+Add a constraint. Go deeper. Make it concrete. Ask for more reasoning steps.
+
+00:08:27.083 --> 00:08:33.357
+Step by step, a simple instruction turns into a much more complex one.
+
+00:08:33.707 --> 00:08:38.207
+Another method, OSS-Instruct, starts from real code instead.
+
+00:08:38.207 --> 00:08:42.707
+It takes a snippet from an open-source repository as a seed.
+
+00:08:43.057 --> 00:08:50.417
+The model is asked to take inspiration from the snippet, and write a new, high-quality programming problem with its solution.
+
+00:08:50.767 --> 00:09:00.647
+Because the seeds come from many real projects, the problems are more varied and less biased than ones a model invents from nothing.
+
+00:09:01.247 --> 00:09:10.167
+In the Magicoder paper, models trained this way compare well with other models of the same size on HumanEval, a standard coding benchmark.
+
+00:09:10.967 --> 00:09:14.558
+With data in hand, how do we build a coding LLM?
+
+00:09:14.558 --> 00:09:17.925
+Training one from scratch is super expensive.
+
+00:09:17.925 --> 00:09:23.087
+The practical way is to start from a base model and keep training it.
+
+00:09:23.437 --> 00:09:29.282
+Composer 2, the model inside the Cursor editor, starts from the base model Kimi 2.5.
+
+00:09:29.282 --> 00:09:36.517
+It continues pretraining on more data, then uses reinforcement learning inside Cursor's own environment.
+
+00:09:36.867 --> 00:09:41.709
+The second model, Coder Next from Alibaba, follows the same shape.
+
+00:09:41.709 --> 00:09:44.717
+Its base is Alibaba's general Next model.
+
+00:09:44.717 --> 00:09:53.667
+Then comes mid-training, and then reinforcement learning, with tasks built from GitHub pull requests in Docker containers.
+
+00:09:54.017 --> 00:09:57.766
+To get enough of those tasks, they synthesize them.
+
+00:09:57.766 --> 00:10:04.235
+They collect repositories, plant bugs, and keep only the bugs that make real tests fail.
+
+00:10:04.235 --> 00:10:08.057
+Then a model writes an issue that describes the bug.
+
+00:10:08.657 --> 00:10:14.337
+Each one becomes a new task: here is a repository and an issue, now fix it.
+
+00:10:15.133 --> 00:10:18.775
+Both models end with reinforcement learning.
+
+00:10:18.775 --> 00:10:24.486
+There are many algorithms for LLMs, such as PPO, DPO, GRPO, and GSPO,
+
+00:10:24.486 --> 00:10:28.293
+and mature open-source frameworks to run them.
+
+00:10:28.643 --> 00:10:33.567
+But for software engineering tasks, the critical part is the reward.
+
+00:10:33.567 --> 00:10:35.883
+How do we score a piece of code?
+
+00:10:36.483 --> 00:10:38.681
+There are two kinds of rewards.
+
+00:10:38.681 --> 00:10:41.943
+Implicit rewards use another model as a judge.
+
+00:10:41.943 --> 00:10:45.843
+Verifiable rewards come from actually running the code.
+
+00:10:46.193 --> 00:10:48.805
+Here is a reward model at work.
+
+00:10:48.805 --> 00:10:53.187
+The task: implement a discount calculation function.
+
+00:10:53.187 --> 00:10:56.894
+One answer just multiplies the price by 0.8.
+
+00:10:56.894 --> 00:10:58.073
+It scores 0.2.
+
+00:10:58.423 --> 00:11:03.199
+The other answer first rejects a negative price, then applies the discount.
+
+00:11:03.199 --> 00:11:04.663
+The judge gives it 0.8.
+
+00:11:05.013 --> 00:11:07.409
+Verifiable rewards are stricter.
+
+00:11:07.409 --> 00:11:10.105
+If all tests pass, the reward is +1.
+
+00:11:10.105 --> 00:11:17.293
+If any test fails, the code doesn't compile, or it runs out of time or memory, the reward is -1.
+
+00:11:18.066 --> 00:11:21.506
+But this creates a problem called sparse reward.
+
+00:11:21.856 --> 00:11:29.573
+Imagine the model writes a 500-line program, with one off-by-one error on line 499.
+
+00:11:29.573 --> 00:11:30.596
+It gets -1.
+
+00:11:30.596 --> 00:11:35.616
+No partial credit, and no hint of where it went wrong.
+
+00:11:36.216 --> 00:11:38.672
+One fix is fine-grained feedback.
+
+00:11:38.672 --> 00:11:43.136
+Instead of one reward at the end, give rewards step by step.
+
+00:11:43.486 --> 00:11:47.809
+In this function, line 6 has a typo: 'dta' instead of 'data',
+
+00:11:47.809 --> 00:11:49.651
+so it throws a name error.
+
+00:11:49.651 --> 00:11:53.406
+Only the tokens that led to that error are penalized.
+
+00:11:53.756 --> 00:11:57.253
+The valid early return is not penalized.
+
+00:11:57.253 --> 00:12:02.236
+And line 7 never ran, so it is masked out of the penalty.
+
+00:12:02.586 --> 00:12:07.424
+Static analysis tools, like a linter, can also give rewards.
+
+00:12:07.424 --> 00:12:09.923
+A syntax error costs 10 points.
+
+00:12:09.923 --> 00:12:11.858
+A SQL injection costs 5.
+
+00:12:11.858 --> 00:12:14.035
+An unused variable costs 1.
+
+00:12:14.035 --> 00:12:18.066
+A missing docstring costs only a fifth of a point.
+
+00:12:18.416 --> 00:12:21.982
+Finally, we can reward the reasoning itself.
+
+00:12:21.982 --> 00:12:27.816
+A process reward model scores the chain of thought: 0.8, highly logical.
+
+00:12:28.166 --> 00:12:32.870
+But the final code fails to compile, so its outcome is 0.
+
+00:12:32.870 --> 00:12:36.253
+Multiply them, and the total reward is 0.
+
+00:12:36.253 --> 00:12:39.966
+Good reasoning only counts if the code works.
+
+00:12:40.766 --> 00:12:44.130
+So, should we use a general model or a coding model?
+
+00:12:44.130 --> 00:12:51.246
+Leaderboards rank models on software engineering and on code generation, and the ranking changes all the time.
+
+00:12:51.596 --> 00:12:53.912
+The bigger question is this.
+
+00:12:53.912 --> 00:12:57.716
+Do LLMs really make developers more efficient?
+
+00:12:58.266 --> 00:13:03.427
+A McKinsey study says yes, but less so for hard tasks.
+
+00:13:03.427 --> 00:13:10.212
+With generative AI, code documentation took about 45% to 50% less time,
+
+00:13:10.212 --> 00:13:14.226
+and code generation about 35% to 45% less.
+
+00:13:14.576 --> 00:13:16.883
+Refactoring saved 20% to 30%.
+
+00:13:16.883 --> 00:13:21.336
+But for high-complexity tasks, the saving was under 10%.
+
+00:13:21.686 --> 00:13:23.597
+And speed is not quality.
+
+00:13:23.597 --> 00:13:31.010
+Another study, from Uplevel, found that developers with Copilot access had a 41% higher bug rate,
+
+00:13:31.010 --> 00:13:35.366
+while the number of issues they finished stayed the same.
+
+00:13:35.966 --> 00:13:40.846
+So engineering teams still need to review the code, and put guardrails in place.
+
+00:13:41.633 --> 00:13:42.953
+Let's sum up.
+
+00:13:43.303 --> 00:13:46.834
+Repository-level code is too long for one prompt.
+
+00:13:46.834 --> 00:13:52.022
+So we retrieve the right context, and RepoCoder does it again and again,
+
+00:13:52.022 --> 00:13:54.543
+using each draft as a better query.
+
+00:13:54.893 --> 00:14:00.602
+Generated code can invent packages that don't exist, so check names before you run it.
+
+00:14:00.602 --> 00:14:04.253
+And today, agents fold all these steps into their loop.
+
+00:14:04.603 --> 00:14:11.442
+Coding models are built from a base model with synthetic data, continued training, and reinforcement learning,
+
+00:14:11.442 --> 00:14:14.363
+where the reward decides what the model learns.
+
+00:14:14.713 --> 00:14:16.286
+Here's something to try.
+
+00:14:16.286 --> 00:14:21.658
+Ask a coding assistant to finish a function that calls a helper from another file.
+
+00:14:21.658 --> 00:14:23.755
+Does it guess the helper's name?
+
+00:14:23.755 --> 00:14:26.113
+Then show it that file, and compare.
+
+00:14:26.900 --> 00:14:28.489
+That's all for this lecture.
+
+00:14:28.489 --> 00:14:29.793
+Thank you for watching.
+
+00:14:29.793 --> 00:14:33.140
+Bring your questions to the next class, Team Collaboration.
+

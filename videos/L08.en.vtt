@@ -1,0 +1,560 @@
+WEBVTT
+
+00:00:02.900 --> 00:00:08.056
+Welcome to CSC4801, AI-assisted Software Engineering.
+
+00:00:08.056 --> 00:00:10.780
+This is Lecture 8: Coding 1.
+
+00:00:11.567 --> 00:00:19.252
+Our course follows the life of software: requirement engineering, coding, testing and verification,
+
+00:00:19.252 --> 00:00:20.727
+repair, and AI ops.
+
+00:00:21.077 --> 00:00:22.898
+Today we start on coding.
+
+00:00:22.898 --> 00:00:28.797
+The question is easy to state: given a specification, how do we get working code?
+
+00:00:29.147 --> 00:00:33.632
+On one side, a specification written in plain language.
+
+00:00:33.632 --> 00:00:35.997
+On the other side, a program.
+
+00:00:35.997 --> 00:00:37.547
+In between, an LLM.
+
+00:00:38.334 --> 00:00:41.894
+To answer that question well, we need three pillars.
+
+00:00:42.244 --> 00:00:43.864
+The first is benchmarks.
+
+00:00:43.864 --> 00:00:45.958
+How do we evaluate performance?
+
+00:00:45.958 --> 00:00:50.684
+Without a way to measure, we can't tell whether any idea really helps.
+
+00:00:51.034 --> 00:00:52.895
+The second is the harness.
+
+00:00:52.895 --> 00:00:57.834
+How do we use LLMs efficiently, with good prompts and good workflows?
+
+00:00:58.184 --> 00:01:00.260
+The third is the model itself.
+
+00:01:00.260 --> 00:01:04.344
+How do we teach an LLM coding knowledge in the first place?
+
+00:01:04.694 --> 00:01:09.172
+In this lecture, we look at two of them: benchmarks, and then the harness.
+
+00:01:09.172 --> 00:01:11.774
+The model is the topic of the next lecture.
+
+00:01:12.124 --> 00:01:14.224
+Let's start with benchmarks.
+
+00:01:14.224 --> 00:01:20.524
+The inventor Charles Kettering said: a problem well stated is a problem half solved.
+
+00:01:21.124 --> 00:01:23.027
+A benchmark does exactly that.
+
+00:01:23.027 --> 00:01:25.945
+It defines a specific coding problem for LLMs.
+
+00:01:25.945 --> 00:01:29.244
+It can also provide learning data for training them.
+
+00:01:29.594 --> 00:01:33.661
+That's why every new model, from Claude to Qwen to DeepSeek,
+
+00:01:33.661 --> 00:01:36.643
+reports its results on a list of benchmarks.
+
+00:01:36.643 --> 00:01:39.354
+Let's look at the most widely used ones.
+
+00:01:40.134 --> 00:01:43.254
+The classic one is HumanEval.
+
+00:01:43.604 --> 00:01:48.602
+Each task is a Python function with its signature and a docstring.
+
+00:01:48.602 --> 00:01:54.887
+Here, a function called incr_list: return a list with every element increased by 1.
+
+00:01:54.887 --> 00:01:57.764
+The docstring even shows two examples.
+
+00:01:58.114 --> 00:01:59.456
+That is the prompt.
+
+00:01:59.456 --> 00:02:03.834
+The model writes the body, here a one-line list comprehension.
+
+00:02:04.184 --> 00:02:06.700
+Then hidden unit tests run the code.
+
+00:02:06.700 --> 00:02:09.984
+If they all pass, the answer counts as correct.
+
+00:02:10.334 --> 00:02:13.028
+HumanEval has 164 of these tasks.
+
+00:02:13.028 --> 00:02:18.254
+Small, but it became the standard yardstick for code generation.
+
+00:02:19.034 --> 00:02:22.554
+How do we turn test results into one number?
+
+00:02:22.554 --> 00:02:26.874
+The standard metric is pass@k, and the idea is simple.
+
+00:02:27.224 --> 00:02:30.873
+Give the model a fixed number of attempts at a task.
+
+00:02:30.873 --> 00:02:35.224
+If at least one attempt is correct, the task counts as solved.
+
+00:02:35.824 --> 00:02:41.271
+With one attempt, the answer fails, so pass@1 is 0%.
+
+00:02:41.271 --> 00:02:45.984
+Ask again, it passes, and now pass@1 is 100%.
+
+00:02:46.334 --> 00:02:51.865
+With three attempts, the first two fail but the third passes.
+
+00:02:51.865 --> 00:02:53.497
+So pass@3 is 100%.
+
+00:02:53.497 --> 00:02:59.934
+With five attempts, only the fourth is right, and pass@5 is still 100%.
+
+00:03:00.284 --> 00:03:05.198
+Over a whole benchmark, we average across tasks.
+
+00:03:05.198 --> 00:03:10.317
+Task 1 is solved, task 2 is not, task 3 is solved.
+
+00:03:10.317 --> 00:03:12.364
+So pass@5 is 66.67%.
+
+00:03:12.714 --> 00:03:15.068
+But there's a catch.
+
+00:03:15.068 --> 00:03:17.539
+LLM output is random.
+
+00:03:17.539 --> 00:03:24.954
+Measure pass@1 five times, and you might get 100, 0, 0, 100, 0.
+
+00:03:25.304 --> 00:03:31.184
+When the number of attempts is small, the metric jumps around a lot from run to run.
+
+00:03:31.967 --> 00:03:33.737
+The fix is to sample more.
+
+00:03:33.737 --> 00:03:38.841
+Generate a large pool of answers, n of them, with n at least as large as k,
+
+00:03:38.841 --> 00:03:41.087
+and run the tests on all of them.
+
+00:03:41.437 --> 00:03:43.488
+Then count how many pass.
+
+00:03:43.488 --> 00:03:46.277
+We call that count c, for correct.
+
+00:03:46.627 --> 00:03:50.444
+Now imagine picking k answers out of the pool.
+
+00:03:50.444 --> 00:03:53.347
+There are n choose k ways to do it.
+
+00:03:53.697 --> 00:03:57.925
+How many of those picks contain no correct answer at all?
+
+00:03:57.925 --> 00:04:02.228
+We may only choose from the wrong ones, n minus c of them,
+
+00:04:02.228 --> 00:04:05.417
+so there are n minus c choose k such picks.
+
+00:04:05.767 --> 00:04:10.509
+The ratio of the two is the chance that every pick fails.
+
+00:04:10.509 --> 00:04:17.247
+One minus that ratio gives us pass@k, the chance that at least one pick succeeds.
+
+00:04:17.847 --> 00:04:23.665
+And if fewer than k answers are wrong, every pick must include a correct one,
+
+00:04:23.665 --> 00:04:25.327
+so pass@k is simply 1.
+
+00:04:25.677 --> 00:04:27.733
+Here's an example.
+
+00:04:27.733 --> 00:04:32.074
+10 samples, and 3 of them are correct.
+
+00:04:32.074 --> 00:04:33.673
+Pass@1 is 30%.
+
+00:04:33.673 --> 00:04:35.957
+Pass@5 is about 92%.
+
+00:04:36.307 --> 00:04:38.110
+This estimator is unbiased.
+
+00:04:38.110 --> 00:04:43.383
+In the original HumanEval paper, its estimates stay centered on the true value,
+
+00:04:43.383 --> 00:04:46.987
+and the spread shrinks as the number of samples grows.
+
+00:04:47.767 --> 00:04:49.624
+Now pause and think.
+
+00:04:49.624 --> 00:04:52.408
+Why not use a simpler formula?
+
+00:04:52.408 --> 00:04:57.327
+Here p̂ is c over n, the fraction of correct samples.
+
+00:04:57.877 --> 00:05:04.799
+Why not compute pass@k as 1 minus the quantity 1 minus p̂, raised to the power k?
+
+00:05:04.799 --> 00:05:09.157
+Stop the video for a moment, and look for the flaw.
+
+00:05:09.707 --> 00:05:10.960
+Here's the problem.
+
+00:05:10.960 --> 00:05:17.947
+That formula assumes the draws are independent, as if we could draw the same wrong sample again and again.
+
+00:05:18.297 --> 00:05:21.719
+But we actually pick different samples from the pool.
+
+00:05:21.719 --> 00:05:27.657
+Each wrong one we pick leaves fewer wrong ones behind, so failing every time is less likely.
+
+00:05:28.007 --> 00:05:33.595
+In our example, the simple formula gives about 83% instead of 92%.
+
+00:05:33.595 --> 00:05:35.711
+It underestimates pass@k.
+
+00:05:35.711 --> 00:05:44.007
+The curves on the slide show the same bias: they sit below the true value until n gets very large.
+
+00:05:44.801 --> 00:05:47.120
+Pass@k is not just for HumanEval.
+
+00:05:47.120 --> 00:05:50.001
+It's widely used in other benchmarks too.
+
+00:05:50.351 --> 00:05:56.185
+MBPP, short for Mostly Basic Python Problems, has 974 entry-level tasks.
+
+00:05:56.185 --> 00:06:02.911
+Each one comes with a short description, a reference solution, and test assertions.
+
+00:06:03.261 --> 00:06:08.136
+LiveCodeBench collects problems from programming contest sites over time.
+
+00:06:08.136 --> 00:06:13.012
+It tests more than writing code: also repairing code after a failed test,
+
+00:06:13.012 --> 00:06:17.621
+predicting test outputs, and predicting what a piece of code returns.
+
+00:06:17.971 --> 00:06:20.637
+BigCodeBench moves closer to real work.
+
+00:06:20.637 --> 00:06:27.131
+Its tasks ask the model to use many common libraries and function calls, not just plain Python.
+
+00:06:27.901 --> 00:06:30.157
+So how well do LLMs do?
+
+00:06:30.157 --> 00:06:36.827
+The EvalPlus leaderboard tests models on HumanEval with extra tests.
+
+00:06:36.827 --> 00:06:42.026
+There, the top 7 models all score above 90 on pass@1.
+
+00:06:42.026 --> 00:06:44.381
+The best two score 96.3.
+
+00:06:44.731 --> 00:06:48.331
+So, is generating code snippets solved?
+
+00:06:48.881 --> 00:06:49.798
+Not so fast.
+
+00:06:49.798 --> 00:06:57.441
+First, we now have much stronger LLM agents, so small snippets no longer tell the best models apart.
+
+00:06:57.791 --> 00:07:00.083
+Second, these benchmarks are public.
+
+00:07:00.083 --> 00:07:06.706
+Their problems end up in the training data, so a high score may only mean the model has seen the answer.
+
+00:07:06.706 --> 00:07:08.871
+This is called data contamination.
+
+00:07:09.221 --> 00:07:12.701
+The response is to make benchmarks dynamic.
+
+00:07:13.301 --> 00:07:19.276
+LiveBench, for example, keeps releasing new questions, and updates its data set every 6 months,
+
+00:07:19.276 --> 00:07:22.421
+so the model can't have seen them during training.
+
+00:07:22.771 --> 00:07:25.927
+Another direction is open-ended problems.
+
+00:07:25.927 --> 00:07:35.011
+Frontier-CS includes tasks like polyomino packing: fit thousands of small pieces into the tightest possible rectangle.
+
+00:07:35.361 --> 00:07:39.887
+There is no single right answer, only better or worse ones.
+
+00:07:39.887 --> 00:07:45.641
+The task rewards heuristic design and long-horizon improvement, not memory.
+
+00:07:46.434 --> 00:07:48.779
+Benchmarks have problems of their own.
+
+00:07:48.779 --> 00:07:50.754
+First, they can simply be wrong.
+
+00:07:51.104 --> 00:07:59.693
+Here's a task: generate a series of random dates between a start date and an end date, including both.
+
+00:07:59.693 --> 00:08:03.904
+From January 1st to January 10th, that's 10 dates.
+
+00:08:04.254 --> 00:08:10.551
+But the test case expects the length to equal end date minus start date, in days.
+
+00:08:10.551 --> 00:08:11.250
+That's 9.
+
+00:08:11.250 --> 00:08:13.894
+A correct solution fails the test.
+
+00:08:14.244 --> 00:08:16.123
+Second, agents can cheat.
+
+00:08:16.123 --> 00:08:23.565
+In one case on Terminal-Bench 2, the agent read the test folder, which should have been off limits.
+
+00:08:23.565 --> 00:08:27.324
+The expected answer was right there in plain text.
+
+00:08:27.674 --> 00:08:32.011
+So it wrote that answer straight into the result file.
+
+00:08:32.011 --> 00:08:37.954
+Both tests passed, and the agent reported success, without doing the task.
+
+00:08:38.304 --> 00:08:41.619
+Agents can also look up answers on the internet.
+
+00:08:41.619 --> 00:08:47.421
+When one study restricted internet access on SWE-bench Multilingual, scores dropped.
+
+00:08:47.421 --> 00:08:50.184
+The newest model on the chart lost 9.1%.
+
+00:08:50.534 --> 00:08:58.054
+The lesson: a score is only as trustworthy as the benchmark, and the harness that runs it.
+
+00:08:58.834 --> 00:09:01.601
+Now the second pillar: the harness.
+
+00:09:01.601 --> 00:09:05.554
+How do we get more out of a model we already have?
+
+00:09:05.904 --> 00:09:08.440
+The cheapest way is prompt engineering.
+
+00:09:08.440 --> 00:09:12.864
+It needs no training, and it's easy to apply to many different LLMs.
+
+00:09:13.214 --> 00:09:19.097
+You already know one example: ReAct from Lecture 2, which mixes reasoning and acting.
+
+00:09:19.097 --> 00:09:22.974
+Much other research also works on how the model reasons.
+
+00:09:23.324 --> 00:09:27.530
+Chain of thought simply adds: let's solve the problem step by step.
+
+00:09:27.530 --> 00:09:32.364
+The model writes out its intermediate reasoning, and gets more answers right.
+
+00:09:32.714 --> 00:09:34.755
+Tree of thoughts goes further.
+
+00:09:34.755 --> 00:09:38.566
+The model explores several lines of reasoning as a tree.
+
+00:09:38.566 --> 00:09:43.874
+It evaluates its own partial thoughts, and backtracks when a branch looks bad.
+
+00:09:44.224 --> 00:09:48.201
+A method called structured chain of thought is made for code.
+
+00:09:48.201 --> 00:09:53.482
+Before writing code, the model plans with the three basic structures of programs:
+
+00:09:53.482 --> 00:09:55.504
+sequences, branches, and loops.
+
+00:09:55.854 --> 00:10:00.526
+To find the first repeated character in a string, it first writes:
+
+00:10:00.526 --> 00:10:04.773
+for each character, if it appears more than once, return it.
+
+00:10:04.773 --> 00:10:07.534
+Then it turns that plan into real code.
+
+00:10:08.334 --> 00:10:11.401
+Prompts can also be chained into a fixed workflow.
+
+00:10:11.401 --> 00:10:16.494
+Agentless, which we met in Lecture Two, uses predefined steps and prompt templates.
+
+00:10:16.844 --> 00:10:20.198
+To fix an issue, it first localizes the problem:
+
+00:10:20.198 --> 00:10:23.692
+from the repository structure to suspicious files,
+
+00:10:23.692 --> 00:10:28.164
+then to classes and functions, then to the exact places to edit.
+
+00:10:28.514 --> 00:10:33.401
+Next, it generates candidate patches, and tests that reproduce the issue.
+
+00:10:33.401 --> 00:10:37.954
+Finally, it filters and ranks the patches, and submits the best one.
+
+00:10:38.304 --> 00:10:41.350
+Every step has its own prompt template.
+
+00:10:41.350 --> 00:10:44.944
+The harness, not the model, decides the order.
+
+00:10:45.734 --> 00:10:48.974
+Can we improve the prompt while the program is running?
+
+00:10:49.524 --> 00:10:52.305
+Self-improving code generation does this.
+
+00:10:52.305 --> 00:10:58.004
+Step one, the task: write a Python script that prints all unique elements in a list.
+
+00:10:58.354 --> 00:11:03.073
+Step two, the model writes a solution with Python's built-in set.
+
+00:11:03.073 --> 00:11:05.904
+Step three, an executor runs the tests.
+
+00:11:05.904 --> 00:11:10.914
+One passes, but one fails, because the order of the elements is lost.
+
+00:11:11.264 --> 00:11:17.320
+Step four, the model reflects: this does not work, because set does not keep the order.
+
+00:11:17.320 --> 00:11:21.984
+That feedback goes back into the prompt, and the model tries again.
+
+00:11:22.334 --> 00:11:23.926
+Reflexion builds on this.
+
+00:11:23.926 --> 00:11:28.450
+After a failed attempt, it stores the reason for the failure in memory,
+
+00:11:28.450 --> 00:11:31.126
+and adds it to the prompt of the next try.
+
+00:11:31.126 --> 00:11:34.694
+The model learns from its mistakes without any training.
+
+00:11:35.044 --> 00:11:38.779
+Another idea is to generate many candidates at once.
+
+00:11:38.779 --> 00:11:42.730
+Run each one, then let another model act as a verifier,
+
+00:11:42.730 --> 00:11:45.604
+rank them, and return the top candidate.
+
+00:11:45.954 --> 00:11:47.487
+Notice the pattern.
+
+00:11:47.487 --> 00:11:49.990
+Running the code is the signal.
+
+00:11:49.990 --> 00:11:54.834
+Tests don't just measure the code; they also help create it.
+
+00:11:55.634 --> 00:11:56.994
+Let's sum up.
+
+00:11:57.344 --> 00:12:01.654
+Generating code from specifications rests on three pillars:
+
+00:12:01.654 --> 00:12:04.504
+benchmarks, the harness, and the model.
+
+00:12:04.854 --> 00:12:08.178
+Benchmarks like HumanEval report pass at k.
+
+00:12:08.178 --> 00:12:12.507
+Estimate it from many samples with the unbiased formula.
+
+00:12:12.507 --> 00:12:18.614
+And remember that benchmarks can be saturated, contaminated, wrong, or cheated.
+
+00:12:18.964 --> 00:12:24.493
+In the harness, step-by-step reasoning, structured plans, fixed workflows,
+
+00:12:24.493 --> 00:12:29.724
+and feedback from running the code all get more out of the same model.
+
+00:12:30.074 --> 00:12:31.742
+Here's something to try.
+
+00:12:31.742 --> 00:12:36.679
+Pick one HumanEval task, ask an LLM for ten answers, and run the tests.
+
+00:12:36.679 --> 00:12:42.034
+Then compute pass at one and pass at five with the formula from this lecture.
+
+00:12:42.834 --> 00:12:44.578
+That's all for this lecture.
+
+00:12:44.578 --> 00:12:47.755
+Bring your questions to the next class, Coding Two,
+
+00:12:47.755 --> 00:12:50.994
+where we turn to the third pillar: the model itself.
+

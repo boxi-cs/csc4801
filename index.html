@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSC4801 Interactive Notes</title>
+  <meta name="description" content="CSC4801 AI-assisted Software Engineering (CUHK-Shenzhen): interactive lecture notes, one page per lecture.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230F6E73'/%3E%3Ctext x='16' y='21' font-family='monospace' font-size='11' font-weight='700' text-anchor='middle' fill='%23F6F5F1'%3E4801%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="assets/style.css">
+  <link rel="stylesheet" href="assets/course.css">
+  <style>
+    .lec:hover { transform: none; }
+    .lec .acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 4px; }
+    .lec .notes { font-size: 13px; font-weight: 600; text-decoration: none; padding: 6px 10px; border-radius: 7px; border: 1px solid var(--line); }
+    .lec.ready .notes { color: var(--paper); background: var(--teal); border-color: var(--teal); }
+    .lec.soon .notes { color: var(--stone); cursor: help; }
+    .lec .watch { font-size: 13px; padding: 6px 10px; border-radius: 7px; border: 1px solid var(--amber); background: var(--mark); color: var(--ink); cursor: pointer; }
+    .lec .watch:hover { filter: brightness(1.05); }
+    .lec .msg-soon { flex-basis: 100%; font: 500 11px var(--mono); color: var(--stone); }
+    dialog.player { width: min(960px, calc(100vw - 32px)); padding: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--ink); }
+    dialog.player::backdrop { background: rgba(0, 0, 0, 0.6); }
+    dialog.player video { display: block; width: 100%; background: #000; }
+    dialog.player .bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 14px; font-size: 14px; }
+    .part { font: 600 12px var(--mono); color: var(--amber); letter-spacing: 0.06em; margin: 34px 0 12px; }
+    .facts { display: flex; flex-wrap: wrap; gap: 10px 28px; margin-top: 18px; font-size: 14px; color: var(--ink-2); }
+    .facts b { display: block; font: 600 11px var(--mono); color: var(--stone); letter-spacing: 0.06em; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html"><span class="brand-mark" style="font-size:11px">4801</span><span class="brand-text"><b>CSC4801</b><span>AI-assisted Software Engineering</span></span></a>
+    <span style="flex:1"></span>
+    <a class="btn" style="padding:6px 12px;font-size:13px" href="https://sra-research.github.io/CSC4801/" target="_blank" rel="noopener">Official site ↗</a>
+    <button class="iconbtn" id="theme" title="Light / dark">☾</button>
+  </header>
+  <main class="wrap">
+    <section class="hero" style="grid-template-columns:minmax(0,1fr)">
+      <div>
+        <span class="pill">CUHK-Shenzhen · Fall 2026 · Instructor: Jinsheng Ba</span>
+        <h1>AI-assisted Software Engineering<small>Interactive lecture notes</small></h1>
+        <p class="lead">A companion to the lectures: one page per lecture, following the slides, with demos you can step through — the agent loop, prompts, tool calls — and a self-check at the end. Schedule, deadlines and the team project are on the <a href="https://sra-research.github.io/CSC4801/" target="_blank" rel="noopener">official course site</a>.</p>
+        <div class="facts">
+          <div><b>COURSE</b>CSC4801</div>
+          <div><b>TERM</b>Fall 2026</div>
+          <div><b>INSTRUCTOR</b>Jinsheng Ba</div>
+        </div>
+      </div>
+    </section>
+    <div id="lectures"></div>
+    <p class="meta" style="margin:40px 0">Videos are up for Lectures 0–9. Notes pages appear as soon as they are checked.</p>
+  </main>
+  <footer></footer>
+  <script src="assets/course.js"></script>
+  <script>
+    renderFooter("");
+    // Titles as on each deck's first slide; grouped by the course's three stages.
+    // The fourth field is the video length in minutes (videos/LNN.mp4), when there is one.
+    const LECTURES = [
+      ["Basis", [
+        [0, "Introduction", "What the course covers and how it runs", 12],
+        [1, "The Principles of Large Language Models", "Tokens and next-token prediction", 16],
+        [2, "Principles of Agents", "LLM + harness, the agent loop, ReAct", 10],
+        [3, "Advanced Agents", "Making agents stronger", 13],
+        [4, "MCP & Skills", "Connecting agents to tools and know-how", 14],
+      ]],
+      ["Techniques", [
+        [5, "How to Write a Prompt", "Prompts that agents can act on", 13],
+        [6, "Requirements", "From what users want to what to build", 14],
+        [7, "Requirements Exercise", "Practising requirements in class", 13],
+        [8, "Coding I", "Writing code with AI assistance", 13],
+        [9, "Coding II", "Writing code with AI assistance, continued", 15],
+      ]],
+      ["Application", [
+        [10, "Team Collaboration", "Working as a team with agents"],
+      ]],
+    ];
+    const pad = (n) => String(n).padStart(2, "0");
+    document.getElementById("lectures").innerHTML = LECTURES.map(([part, list]) =>
+      `<div class="part">${part.toUpperCase()}</div><div class="chapters">` + list.map(([n, t, s, mins]) =>
+        `<div class="card chapcard lec soon" data-n="${n}">
+          <span class="num">L${pad(n)}</span><h3>${t}</h3><p>${s}</p>
+          <div class="acts">
+            <a class="notes" href="L${pad(n)}/index.html">Notes in preparation</a>
+            ${mins ? `<button class="watch" data-n="${n}" data-title="${t}">▶ Video · ${mins} min</button>` : ""}
+          </div></div>`).join("") + "</div>").join("");
+    // Notes are ready when the lecture folder has an index.html. Over file:// the check
+    // can't run, so every notes link stays live.
+    const local = location.protocol === "file:";
+    document.querySelectorAll(".lec").forEach((card) => {
+      const link = card.querySelector(".notes");
+      const ready = () => { card.classList.replace("soon", "ready"); link.textContent = "Open notes →"; };
+      link.addEventListener("click", (e) => {
+        if (!card.classList.contains("soon")) return;
+        e.preventDefault();
+        if (!card.querySelector(".msg-soon")) card.querySelector(".acts").insertAdjacentHTML("beforeend",
+          `<span class="msg-soon">The notes for this lecture are still being written.</span>`);
+      });
+      if (local) return ready();
+      fetch(link.getAttribute("href"), { method: "HEAD" })
+        .then((r) => { if (r.ok) ready(); })
+        .catch(ready);
+    });
+    // One shared player for every lecture video.
+    const dlg = document.createElement("dialog");
+    dlg.className = "player";
+    dlg.innerHTML = `<video controls preload="none"></video><div class="bar"><b></b><button class="cbtn">Close</button></div>`;
+    document.body.appendChild(dlg);
+    const vid = dlg.querySelector("video");
+    dlg.querySelector("button").onclick = () => dlg.close();
+    dlg.addEventListener("close", () => vid.pause());
+    document.querySelectorAll(".watch").forEach((b) => {
+      b.onclick = () => {
+        const base = `videos/L${pad(+b.dataset.n)}`;   // with English / Chinese subtitles (kit/subs.py)
+        vid.innerHTML = `<track kind="subtitles" srclang="en" label="English" src="${base}.en.vtt" default><track kind="subtitles" srclang="zh" label="中文" src="${base}.zh.vtt">`;
+        vid.src = `${base}.mp4`;
+        dlg.querySelector("b").textContent = `Lecture ${b.dataset.n} · ${b.dataset.title}`;
+        dlg.showModal();
+        vid.play().catch(() => {});
+      };
+    });
+    const themeBtn = document.getElementById("theme");
+    function applyTheme(t) {
+      if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+      const dark = t ? t === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+      themeBtn.textContent = dark ? "☀" : "☾";
+    }
+    try { applyTheme(localStorage.getItem("csc4801-theme")); } catch { applyTheme(null); }
+    themeBtn.onclick = () => {
+      const cur = document.documentElement.dataset.theme;
+      const dark = cur ? cur === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+      const t = dark ? "light" : "dark";
+      applyTheme(t);
+      try { localStorage.setItem("csc4801-theme", t); } catch { /* storage unavailable */ }
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,560 @@
+WEBVTT
+
+00:00:02.900 --> 00:00:07.658
+Welcome to CSC4801, AI-assisted Software Engineering.
+
+00:00:07.658 --> 00:00:10.980
+This is Lecture Four: MCP and Skills.
+
+00:00:11.767 --> 00:00:16.287
+So far, we have built up a coding agent piece by piece.
+
+00:00:16.637 --> 00:00:17.660
+Prompts go in.
+
+00:00:17.660 --> 00:00:21.096
+Context management decides what the model sees.
+
+00:00:21.096 --> 00:00:24.678
+Retrieval, or RAG, brings in the right documents.
+
+00:00:24.678 --> 00:00:27.237
+And subagents take on smaller jobs.
+
+00:00:27.587 --> 00:00:30.530
+So the context is well managed.
+
+00:00:30.530 --> 00:00:36.130
+But look at the other side: what can the agent actually do?
+
+00:00:36.130 --> 00:00:40.307
+Its tools are still a fixed, predefined set.
+
+00:00:41.100 --> 00:00:47.813
+Here are the built-in tools of Claude Code again, from Lecture Two.
+
+00:00:47.813 --> 00:00:51.820
+Bash, Edit, Glob, Grep, Read, and Write.
+
+00:00:52.170 --> 00:00:54.747
+They are enough to work on files.
+
+00:00:54.747 --> 00:01:03.490
+But real work touches much more: the git history, an issue tracker, a database, a web browser, your team's chat.
+
+00:01:03.840 --> 00:01:06.868
+Each tool is written into the agent itself.
+
+00:01:06.868 --> 00:01:13.840
+To add one, someone has to change the agent's own code, and then do it again for every other agent.
+
+00:01:14.190 --> 00:01:16.923
+So here is the problem for today.
+
+00:01:16.923 --> 00:01:20.070
+How can we add a new tool efficiently?
+
+00:01:20.867 --> 00:01:25.307
+The answer is called MCP, the Model Context Protocol.
+
+00:01:25.657 --> 00:01:30.268
+MCP is a unified interface for adding tools to agents.
+
+00:01:30.268 --> 00:01:37.697
+Write a tool once, as an MCP server, and any agent that speaks the protocol can use it.
+
+00:01:38.297 --> 00:01:40.652
+Think of it like a USB port.
+
+00:01:40.652 --> 00:01:44.856
+The agent application is the host, such as Claude.
+
+00:01:44.856 --> 00:01:49.817
+Inside it, an MCP client plugs into one server per service.
+
+00:01:50.167 --> 00:01:58.327
+One server might connect to Slack, another to Gmail or a calendar, and another to local data on your own machine.
+
+00:01:59.101 --> 00:02:02.193
+Let's follow one request through MCP.
+
+00:02:02.193 --> 00:02:05.621
+The user asks: analyse the latest commit.
+
+00:02:05.971 --> 00:02:10.875
+The LLM reasons: to do this, I need to read the git history.
+
+00:02:10.875 --> 00:02:13.491
+So it calls a tool, list commit.
+
+00:02:13.841 --> 00:02:21.321
+The MCP client turns that call into a JSON RPC request, and sends it to the MCP server.
+
+00:02:21.671 --> 00:02:23.654
+The server does the real work.
+
+00:02:23.654 --> 00:02:27.951
+It fetches the git logs, and returns them in a JSON RPC response.
+
+00:02:28.301 --> 00:02:34.341
+The client hands the tool output back to the LLM, and the model analyses the results for the user.
+
+00:02:34.691 --> 00:02:37.439
+Now look at where each part lives.
+
+00:02:37.439 --> 00:02:41.319
+The LLM and the MCP client are inside the agent.
+
+00:02:41.319 --> 00:02:46.251
+The MCP server and the data are outside, as external servers.
+
+00:02:46.851 --> 00:02:50.563
+To the model, an MCP tool looks just like a built-in tool.
+
+00:02:50.563 --> 00:02:54.211
+The client registers it as one more row in the tool list.
+
+00:02:55.001 --> 00:02:57.109
+Let's build a simple MCP server.
+
+00:02:57.109 --> 00:03:00.601
+We'll use FastMCP, a Python library for writing them.
+
+00:03:00.951 --> 00:03:05.351
+Import FastMCP, and create a server called Demo.
+
+00:03:05.701 --> 00:03:11.093
+Then write an ordinary Python function, `add`, which adds two integers.
+
+00:03:11.093 --> 00:03:14.739
+The decorator, `mcp.tool`, turns it into a tool.
+
+00:03:14.739 --> 00:03:19.221
+Its docstring becomes the description that the model reads.
+
+00:03:19.571 --> 00:03:23.251
+Finally, `mcp.run` starts the server.
+
+00:03:23.601 --> 00:03:31.521
+On the other side, the client calls the tool by name, `add`, with the arguments `a=3` and `b=5`.
+
+00:03:31.871 --> 00:03:36.640
+What actually travels between them is a small JSON message.
+
+00:03:36.640 --> 00:03:47.231
+It names the protocol version, gives the request an id, sets the method to `tools/call`, and carries the tool's name and arguments.
+
+00:03:47.831 --> 00:03:52.311
+The server runs `add`, and sends back 8 in the response.
+
+00:03:53.101 --> 00:03:55.504
+The same message works for any tool.
+
+00:03:55.504 --> 00:04:01.981
+Here the method is the same, but the name is get weather, and the argument is the city of Zurich.
+
+00:04:02.331 --> 00:04:05.811
+An MCP server can offer three kinds of things.
+
+00:04:06.161 --> 00:04:13.361
+Tools are functions that the client invokes to take actions or to reach external systems, like this `multiply` function.
+
+00:04:13.711 --> 00:04:16.919
+Resources expose data that clients can read.
+
+00:04:16.919 --> 00:04:23.191
+They are passive data sources, such as a configuration, rather than functions to call.
+
+00:04:23.541 --> 00:04:29.258
+And prompts are reusable message templates, which guide how the model handles a task.
+
+00:04:29.258 --> 00:04:32.621
+This one asks it to analyse a list of data points.
+
+00:04:33.401 --> 00:04:38.081
+Because the interface is shared, a whole ecosystem has grown around it.
+
+00:04:38.431 --> 00:04:43.292
+For example, a browser MCP server gives an agent browser tools:
+
+00:04:43.292 --> 00:04:50.391
+navigate to a page, go back, click, type text, take a screenshot, and read the console logs.
+
+00:04:50.741 --> 00:04:53.624
+Agents now use the web on a large scale.
+
+00:04:53.624 --> 00:05:00.400
+The chart on this slide, from Cloudflare Radar, splits web page requests into bots and humans.
+
+00:05:00.400 --> 00:05:04.221
+In that week, bots made more of them than humans did.
+
+00:05:04.571 --> 00:05:12.171
+And there are whole market sites where you can find MCP servers for almost any service, and plug them into your agent in minutes.
+
+00:05:12.968 --> 00:05:15.587
+But that raises the next problem.
+
+00:05:15.587 --> 00:05:18.128
+Are these tools safe to execute?
+
+00:05:18.678 --> 00:05:23.197
+A server you downloaded from the internet runs code on your machine.
+
+00:05:23.197 --> 00:05:27.518
+A bad tool, or a confused model, could delete files or leak data.
+
+00:05:27.868 --> 00:05:29.953
+The answer is a sandbox.
+
+00:05:29.953 --> 00:05:40.468
+A sandbox gives three things: an isolated environment, execution you can track, and the power to roll back to a snapshot.
+
+00:05:41.068 --> 00:05:42.909
+Sandboxes come in layers.
+
+00:05:42.909 --> 00:05:46.372
+First, run only the bash commands in a sandbox.
+
+00:05:46.372 --> 00:05:52.708
+The coding agent from our examples has a built-in command for this, called `/sandbox`.
+
+00:05:53.058 --> 00:05:55.879
+Second, run one MCP server in a sandbox.
+
+00:05:55.879 --> 00:06:03.498
+You wrap its launch command with a sandbox runtime, so the risky server can only touch what it's allowed to.
+
+00:06:03.848 --> 00:06:08.443
+Third, run the entire coding agent inside the sandbox runtime.
+
+00:06:08.443 --> 00:06:14.448
+And fourth, run a whole operating system in a sandbox, such as a virtual machine.
+
+00:06:14.798 --> 00:06:15.920
+Pause and think.
+
+00:06:15.920 --> 00:06:19.920
+Which layer would you pick for each of these three cases?
+
+00:06:19.920 --> 00:06:22.375
+Everyday coding on your own laptop.
+
+00:06:22.375 --> 00:06:24.200
+Coding on a shared server.
+
+00:06:24.200 --> 00:06:27.638
+And trying a random MCP server from the internet.
+
+00:06:28.188 --> 00:06:29.512
+Here is one answer.
+
+00:06:29.512 --> 00:06:32.789
+On your own laptop, the bash sandbox is enough.
+
+00:06:32.789 --> 00:06:38.297
+On a shared server, use a container, a virtual machine, or the sandbox runtime.
+
+00:06:38.297 --> 00:06:45.828
+And for a random server from the internet, wrap it with the sandbox runtime, or run it in a virtual machine.
+
+00:06:46.601 --> 00:06:48.855
+Now the last problem of today.
+
+00:06:48.855 --> 00:06:52.761
+How do we reuse a good way of working with an agent?
+
+00:06:53.311 --> 00:06:57.262
+Imagine a classmate asks you: how do you debug this issue?
+
+00:06:57.262 --> 00:07:02.031
+You have a good answer, and you have typed it to the agent many times.
+
+00:07:02.381 --> 00:07:04.048
+Debug this issue.
+
+00:07:04.048 --> 00:07:07.283
+1. Reproduce the failure locally.
+
+00:07:07.283 --> 00:07:09.636
+2. Collect stack traces.
+
+00:07:09.636 --> 00:07:13.460
+3. Find the smallest failing component.
+
+00:07:13.460 --> 00:07:16.107
+4. Write a regression test.
+
+00:07:16.107 --> 00:07:17.578
+5. Fix the bug.
+
+00:07:17.578 --> 00:07:20.421
+6. Run the test check script.
+
+00:07:20.771 --> 00:07:21.942
+And two rules.
+
+00:07:21.942 --> 00:07:24.953
+Never modify tests to hide failures.
+
+00:07:24.953 --> 00:07:28.131
+Every bug fix needs a regression test.
+
+00:07:28.481 --> 00:07:34.114
+You could send them your prompt, and they could copy it, and paste it in every time.
+
+00:07:34.114 --> 00:07:37.601
+That works, but it is fragile, and it doesn't scale.
+
+00:07:37.951 --> 00:07:44.583
+Instead, we save it once, as a reusable description of a workflow.
+
+00:07:44.583 --> 00:07:46.191
+That is a skill.
+
+00:07:46.791 --> 00:07:49.295
+Why not put it in memory instead?
+
+00:07:49.295 --> 00:07:57.111
+Memory is a file the agent loads into every session: who you are, your preferences, the project status.
+
+00:07:57.661 --> 00:08:01.525
+A debugging workflow is not needed every time.
+
+00:08:01.525 --> 00:08:06.481
+A skill is not a global workflow that pollutes the context.
+
+00:08:06.481 --> 00:08:10.261
+It is loaded only when the task calls for it.
+
+00:08:11.034 --> 00:08:14.044
+So a skill is a record of experience.
+
+00:08:14.044 --> 00:08:18.274
+A standard operating procedure for one type of task.
+
+00:08:18.624 --> 00:08:27.064
+For example: how to type the fields of a log, how to find slow SQL queries, or how to write a commit message.
+
+00:08:27.414 --> 00:08:29.942
+Skills can even be distilled from people.
+
+00:08:29.942 --> 00:08:35.614
+One open-source project turns a colleague's way of working into a skill that others can use.
+
+00:08:35.964 --> 00:08:38.235
+On disk, a skill is a folder.
+
+00:08:38.235 --> 00:08:45.439
+Inside it is a file called `skill.md`, which contains a name, a description, and a workflow.
+
+00:08:45.439 --> 00:08:50.764
+Next to it are optional folders for references, scripts, and assets.
+
+00:08:51.114 --> 00:08:57.914
+So a skill is prompts, plus scripts, plus other reference files.
+
+00:08:58.514 --> 00:09:01.298
+And the parts are loaded in three levels.
+
+00:09:01.298 --> 00:09:05.304
+The name and description are small, about a hundred tokens.
+
+00:09:05.304 --> 00:09:09.718
+The full workflow in `skill.md` stays under five thousand tokens.
+
+00:09:09.718 --> 00:09:14.674
+And the extra files are read only as needed, so they have no fixed limit.
+
+00:09:15.468 --> 00:09:18.508
+How does the agent know when to use a skill?
+
+00:09:19.058 --> 00:09:21.474
+Look at the top of `skill.md`.
+
+00:09:21.474 --> 00:09:25.019
+Between two lines of dashes is the metadata.
+
+00:09:25.019 --> 00:09:27.677
+The name is systematic debugging.
+
+00:09:27.677 --> 00:09:36.458
+The description says: use when you hit any bug, test failure, or unexpected behavior, before proposing fixes.
+
+00:09:36.808 --> 00:09:41.968
+Below the metadata are the instructions: phase 1, phase 2, and so on.
+
+00:09:42.318 --> 00:09:45.167
+Now the user types: debug this issue.
+
+00:09:45.167 --> 00:09:50.558
+The agent compares the prompt with the metadata of every skill it has.
+
+00:09:50.908 --> 00:09:55.768
+If it matches, the agent loads the full instructions, and follows them.
+
+00:09:55.768 --> 00:10:00.628
+It runs the scripts that come with the skill only when they are needed.
+
+00:10:01.228 --> 00:10:02.851
+This is lazy loading.
+
+00:10:02.851 --> 00:10:09.268
+The context window holds only short descriptions, until a skill is actually needed.
+
+00:10:09.868 --> 00:10:13.445
+This systematic debugging skill is a real, shared skill.
+
+00:10:13.445 --> 00:10:23.028
+There are hub sites where people share their skills, and some apps can even record a demonstration of your screen and turn it into a repeatable skill.
+
+00:10:23.801 --> 00:10:25.396
+Writing a skill is easy.
+
+00:10:25.396 --> 00:10:27.722
+You can build one in a few minutes.
+
+00:10:27.722 --> 00:10:29.848
+But are your skills good enough?
+
+00:10:29.848 --> 00:10:32.241
+That is an active research question.
+
+00:10:32.591 --> 00:10:37.485
+One approach, called Skill Opt, optimizes a skill in a training loop.
+
+00:10:37.485 --> 00:10:46.991
+It runs the agent on a batch of tasks, reflects on what went wrong, proposes an edit, and keeps it only if it passes a held-out check.
+
+00:10:47.341 --> 00:10:55.181
+Evaluations are expensive, so a method called COBRA Skills decides which skills are worth evaluating next.
+
+00:10:55.531 --> 00:10:56.651
+But be careful.
+
+00:10:56.651 --> 00:11:02.628
+A study called Skill Issue tested optimized skills on three Kotlin repositories.
+
+00:11:02.628 --> 00:11:08.531
+The gains were hard to tell apart from the normal variation between agent runs.
+
+00:11:09.131 --> 00:11:12.339
+Another study compares skills with subagents.
+
+00:11:12.339 --> 00:11:15.192
+A skill is loaded into the main context.
+
+00:11:15.192 --> 00:11:17.758
+A subagent works in its own context.
+
+00:11:17.758 --> 00:11:25.531
+With clear inputs and outputs, a subagent can improve results, at the cost of extra tokens for communication.
+
+00:11:25.881 --> 00:11:29.467
+SkillSpec checks whether a skill does what it claims.
+
+00:11:29.467 --> 00:11:38.401
+It compares the declared intent with the behavior the skill actually encodes, and confirms suspected defects in an isolated sandbox.
+
+00:11:38.751 --> 00:11:41.017
+Who keeps skills up to date?
+
+00:11:41.017 --> 00:11:52.511
+Across five repositories, all 254 substantive skill edits were written or merged by humans, even though 62% were marked as co-written with AI.
+
+00:11:52.861 --> 00:12:00.461
+And Code2Skill mines reusable procedures from source code, building a skill bank that an agent can search.
+
+00:12:01.234 --> 00:12:04.595
+Let's step back and see the whole agent.
+
+00:12:04.595 --> 00:12:07.200
+Prompts and context management.
+
+00:12:07.200 --> 00:12:08.712
+RAG and subagents.
+
+00:12:08.712 --> 00:12:14.594
+And today's new pieces: MCP, the sandbox around the tools, and skills.
+
+00:12:14.944 --> 00:12:19.182
+In the end, all an agent does is organize prompts.
+
+00:12:19.182 --> 00:12:23.504
+The model's own system prompt, which you can't see.
+
+00:12:23.504 --> 00:12:26.470
+The project prompt, like CLAUDE.md.
+
+00:12:26.470 --> 00:12:30.454
+Memory and skills, which extend what it can do.
+
+00:12:30.454 --> 00:12:32.064
+And your own input.
+
+00:12:32.664 --> 00:12:38.064
+Coding agents are the major agents today, and other agents share a similar architecture.
+
+00:12:38.414 --> 00:12:41.773
+There are many coding agents to choose from.
+
+00:12:41.773 --> 00:12:43.530
+MiMo Code, from Xiaomi.
+
+00:12:43.530 --> 00:12:47.729
+Claude Code, as a terminal tool or an editor extension.
+
+00:12:47.729 --> 00:12:51.852
+GitHub Copilot, the first generation of coding agents.
+
+00:12:51.852 --> 00:12:53.226
+Codex from OpenAI.
+
+00:12:53.226 --> 00:12:54.982
+Gemini CLI from Google.
+
+00:12:54.982 --> 00:12:57.884
+OpenCode, a popular open-source agent.
+
+00:12:57.884 --> 00:13:01.014
+And Cursor, a fork of Visual Studio Code.
+
+00:13:01.364 --> 00:13:10.884
+They look different, but inside each one you will find the same loop, the same tools, and now, the same MCP and skills.
+
+00:13:10.884 --> 00:13:14.164
+The course project is announced in class.
+
+00:13:14.934 --> 00:13:16.294
+Let's sum up.
+
+00:13:16.644 --> 00:13:18.853
+Predefined tools are limited.
+
+00:13:18.853 --> 00:13:26.244
+MCP, the Model Context Protocol, gives agents one standard way to add new tools, through servers.
+
+00:13:26.594 --> 00:13:32.394
+Tools can be dangerous, so run them in a sandbox, at the layer that fits the risk.
+
+00:13:32.744 --> 00:13:35.419
+And skills save reusable workflows.
+
+00:13:35.419 --> 00:13:41.304
+Only their short descriptions stay in context, until the task needs the rest.
+
+00:13:41.654 --> 00:13:43.345
+Here's something to try.
+
+00:13:43.345 --> 00:13:48.629
+Write a small skill for a task you repeat, such as writing commit messages.
+
+00:13:48.629 --> 00:13:52.574
+Then check: does your agent load it at the right moment?
+
+00:13:53.367 --> 00:13:55.042
+That's all for this lecture.
+
+00:13:55.042 --> 00:13:59.647
+Thank you for watching, and see you in the next class: How to Write a Prompt.
+

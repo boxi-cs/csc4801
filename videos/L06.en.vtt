@@ -1,0 +1,581 @@
+WEBVTT
+
+00:00:02.900 --> 00:00:07.895
+Welcome to CSC4801, AI-assisted Software Engineering.
+
+00:00:07.895 --> 00:00:11.100
+This is Lecture Six: Requirements.
+
+00:00:11.900 --> 00:00:14.272
+So far, we have built agents.
+
+00:00:14.272 --> 00:00:17.380
+And an agent is great at toy projects.
+
+00:00:17.730 --> 00:00:21.086
+Type one line, like: implement a 2048 game.
+
+00:00:21.086 --> 00:00:24.599
+A few minutes later, you have a working game.
+
+00:00:24.599 --> 00:00:28.970
+This style is called vibe coding, and it really is cool.
+
+00:00:29.320 --> 00:00:36.568
+But what about a real-world system, with many users, many features, and years of changes?
+
+00:00:36.568 --> 00:00:38.360
+How do we handle that?
+
+00:00:38.910 --> 00:00:45.439
+To get from a toy project to a real system, an agent needs more than a prompt.
+
+00:00:45.439 --> 00:00:47.950
+It needs software engineering.
+
+00:00:48.733 --> 00:00:53.950
+AI-assisted software engineering covers the whole life of a piece of software.
+
+00:00:53.950 --> 00:00:56.893
+In this course, we follow it in five stages.
+
+00:00:57.243 --> 00:01:00.776
+Requirement engineering decides what to build.
+
+00:01:00.776 --> 00:01:02.082
+Coding builds it.
+
+00:01:02.082 --> 00:01:04.693
+Testing and verification check it.
+
+00:01:04.693 --> 00:01:06.843
+Repair fixes what is broken.
+
+00:01:06.843 --> 00:01:10.683
+And AI ops keeps the system running in production.
+
+00:01:11.033 --> 00:01:16.286
+Today we start at the very beginning: requirement engineering.
+
+00:01:16.286 --> 00:01:21.793
+If this stage is wrong, every later stage builds the wrong thing.
+
+00:01:22.566 --> 00:01:25.635
+Requirement engineering is not one step.
+
+00:01:25.635 --> 00:01:28.166
+It is a cycle of five activities.
+
+00:01:28.516 --> 00:01:31.370
+Elicitation finds out what people need.
+
+00:01:31.370 --> 00:01:35.174
+Modeling turns those needs into a precise structure.
+
+00:01:35.174 --> 00:01:37.443
+Specification writes them down.
+
+00:01:37.443 --> 00:01:39.125
+Validation checks them.
+
+00:01:39.125 --> 00:01:43.076
+And management keeps them up to date as things change.
+
+00:01:43.426 --> 00:01:47.516
+It is a cycle because requirements are never finished.
+
+00:01:47.516 --> 00:01:51.226
+Management feeds new needs back into elicitation.
+
+00:01:51.576 --> 00:01:56.829
+We will use one running example from the slides: an elevator control system.
+
+00:01:56.829 --> 00:02:00.354
+And for each activity, we'll ask the same question.
+
+00:02:00.354 --> 00:02:01.736
+What can AI do here?
+
+00:02:02.533 --> 00:02:05.413
+Let's start with elicitation.
+
+00:02:05.763 --> 00:02:07.811
+Real needs are often hidden.
+
+00:02:07.811 --> 00:02:12.198
+They are buried in meeting transcripts, and in user reviews.
+
+00:02:12.198 --> 00:02:15.123
+Nobody writes them down as a clean list.
+
+00:02:15.473 --> 00:02:21.701
+An AI model can read that unstructured text, and extract latent needs:
+
+00:02:21.701 --> 00:02:25.793
+needs that users have, but don't say out loud.
+
+00:02:26.393 --> 00:02:28.534
+We can go one step further.
+
+00:02:28.534 --> 00:02:35.033
+Instead of only reading what real users said, we can use agents to simulate users.
+
+00:02:35.383 --> 00:02:37.765
+One research framework works like this.
+
+00:02:37.765 --> 00:02:43.383
+First, it generates many user agents, with diversity sampling so they don't all think alike.
+
+00:02:43.733 --> 00:02:49.413
+Each agent then imagines using the product, and writes down its experience step by step.
+
+00:02:49.763 --> 00:02:56.243
+Next, an interviewer agent asks every user agent a set of questions, and records the answers.
+
+00:02:56.593 --> 00:03:03.873
+Finally, the answers are analyzed to identify latent needs, and the result is a report.
+
+00:03:04.667 --> 00:03:08.427
+Here is how that looks for our elevator control system.
+
+00:03:08.777 --> 00:03:15.170
+We create agents that play different users: children, the aged, workers, and managers.
+
+00:03:15.170 --> 00:03:17.177
+Then we interview each one.
+
+00:03:17.527 --> 00:03:20.247
+A child may not reach the top buttons.
+
+00:03:20.247 --> 00:03:24.184
+An older person may need the doors to stay open longer.
+
+00:03:24.184 --> 00:03:26.402
+A worker may carry heavy loads.
+
+00:03:26.402 --> 00:03:29.767
+And a manager may care about energy and safety.
+
+00:03:30.117 --> 00:03:35.197
+From these interviews, we collect a list of requirements, written in natural language.
+
+00:03:35.547 --> 00:03:46.747
+For example, requirement one: when the user presses the up button on a floor, the elevator shall serve that floor, moving up if necessary, and open its doors on arrival.
+
+00:03:47.097 --> 00:04:00.777
+And requirement four: when the overload sensor detects too much weight, the elevator shall prevent further entry, sound an alarm, show a warning, and not move until the weight is reduced.
+
+00:04:01.567 --> 00:04:03.931
+The second activity is modeling.
+
+00:04:03.931 --> 00:04:14.127
+Here, AI identifies the entities and the relationships between them, and builds a model, such as a UML diagram, or a formal specification.
+
+00:04:14.477 --> 00:04:20.797
+So the question is: how do we translate a conversation into a specification?
+
+00:04:21.347 --> 00:04:25.158
+The conversation is our list of elevator requirements.
+
+00:04:25.158 --> 00:04:31.227
+An agent reads it, and produces a specification precise enough for a machine to check.
+
+00:04:31.577 --> 00:04:36.125
+One popular target language is linear temporal logic, or LTL.
+
+00:04:36.125 --> 00:04:40.897
+It is a way to write rules about how a system behaves over time.
+
+00:04:41.247 --> 00:04:43.362
+Think of a traffic light.
+
+00:04:43.362 --> 00:04:47.169
+Ordinary logic can say: the light is red now.
+
+00:04:47.169 --> 00:04:48.607
+LTL can say more.
+
+00:04:48.957 --> 00:04:51.317
+The letter G means always.
+
+00:04:51.317 --> 00:04:58.397
+G red, then something, means: whenever the light is red, that something holds.
+
+00:04:58.747 --> 00:05:00.877
+The letter F means eventually.
+
+00:05:00.877 --> 00:05:04.427
+F green means: the light will eventually be green.
+
+00:05:04.777 --> 00:05:07.172
+And the letter X means next.
+
+00:05:07.172 --> 00:05:14.617
+G, red implies X green, means: whenever it's red, it turns green in the very next step.
+
+00:05:15.400 --> 00:05:23.440
+Writing LTL by hand is hard, so a tool called nl2spec lets an LLM do the translation.
+
+00:05:23.790 --> 00:05:27.779
+It decomposes the sentence into small pieces.
+
+00:05:27.779 --> 00:05:34.870
+Each phrase is translated on its own, such as globally into G, and until into U.
+
+00:05:35.220 --> 00:05:42.542
+Then the user confirms or edits each piece, before they are joined into one final formula.
+
+00:05:42.542 --> 00:05:44.820
+The human stays in the loop.
+
+00:05:45.420 --> 00:05:48.629
+Once we have a formula, a model checker can use it.
+
+00:05:48.629 --> 00:05:50.580
+We give the checker two things.
+
+00:05:50.930 --> 00:05:57.917
+First, a model of the system: its possible states, and the transitions between them.
+
+00:05:57.917 --> 00:06:03.240
+Second, an LTL property, such as: G, request implies F response.
+
+00:06:03.240 --> 00:06:06.650
+Every request eventually gets a response.
+
+00:06:07.000 --> 00:06:11.586
+The checker explores the model's possible executions.
+
+00:06:11.586 --> 00:06:20.240
+If the property can fail, it returns a counterexample: an execution that shows exactly how it fails.
+
+00:06:20.840 --> 00:06:21.981
+Pause and think.
+
+00:06:21.981 --> 00:06:25.262
+How would you write this elevator rule in LTL?
+
+00:06:25.262 --> 00:06:31.040
+Whenever a floor button is pressed, the doors will eventually open at that floor.
+
+00:06:31.590 --> 00:06:35.477
+One answer: G, pressed implies F open.
+
+00:06:35.477 --> 00:06:39.670
+Always, if pressed, then eventually open.
+
+00:06:40.467 --> 00:06:43.442
+Another target for modeling is Lean 4.
+
+00:06:43.442 --> 00:06:47.747
+Lean 4 is a programming language and a proof assistant.
+
+00:06:48.097 --> 00:06:53.400
+You write a mathematical statement, or a software specification, and then a proof.
+
+00:06:53.400 --> 00:06:55.857
+Lean checks that the proof is correct.
+
+00:06:56.207 --> 00:06:59.299
+Take a tiny function, max of a and b.
+
+00:06:59.299 --> 00:07:03.727
+If a is greater than b, return a, otherwise return b.
+
+00:07:04.077 --> 00:07:11.157
+In plain words, the specification is: the result must be at least as large as both inputs.
+
+00:07:11.507 --> 00:07:16.640
+In Lean, the specification is a definition with three conditions.
+
+00:07:16.640 --> 00:07:18.614
+The result is at least a.
+
+00:07:18.614 --> 00:07:20.588
+The result is at least b.
+
+00:07:20.588 --> 00:07:23.747
+And the result is one of the two inputs.
+
+00:07:24.097 --> 00:07:25.918
+Why the third condition?
+
+00:07:25.918 --> 00:07:30.774
+Without it, a function that always returns a million would pass.
+
+00:07:30.774 --> 00:07:33.657
+The spec must say what we really mean.
+
+00:07:34.207 --> 00:07:37.416
+Translating English into Lean is hard too.
+
+00:07:37.416 --> 00:07:41.694
+A method called NL2Lean trains an LLM translator for it.
+
+00:07:41.694 --> 00:07:50.327
+Several reward models score each Lean statement, and their combined reward is fed back to improve the translator.
+
+00:07:51.100 --> 00:07:53.828
+The third activity is specification.
+
+00:07:53.828 --> 00:07:57.540
+The requirements are now decided, and documented.
+
+00:07:57.890 --> 00:07:59.061
+The pipeline grows.
+
+00:07:59.061 --> 00:08:07.130
+The conversation goes to an agent, the agent writes specifications, and the implementation is checked against those specifications.
+
+00:08:07.480 --> 00:08:10.792
+The simplest approach is to call an LLM directly.
+
+00:08:10.792 --> 00:08:16.469
+We give it the code, and ask it to write a specification as annotations in the code.
+
+00:08:16.469 --> 00:08:19.240
+Here, for Java, in a language called JML.
+
+00:08:19.590 --> 00:08:23.473
+Then a verifier checks the specification against the code.
+
+00:08:23.473 --> 00:08:29.430
+If verification fails, we send the error back: these lines failed, please generate again.
+
+00:08:29.780 --> 00:08:32.844
+A method called SpecGen builds on this.
+
+00:08:32.844 --> 00:08:40.700
+First, it has a conversation with the LLM: generate, verify, and send back the errors, a few rounds.
+
+00:08:41.050 --> 00:08:44.225
+If that still fails, it switches to mutation.
+
+00:08:44.225 --> 00:08:51.210
+It makes many small changes to each candidate, selects the promising ones, and verifies them again.
+
+00:08:52.000 --> 00:08:54.738
+The fourth activity is validation.
+
+00:08:54.738 --> 00:08:58.200
+Here, AI scores requirements against rules.
+
+00:08:58.550 --> 00:09:00.115
+Go back to our elevator.
+
+00:09:00.115 --> 00:09:05.524
+Requirement three says the elevator shall serve any floor button pressed inside it.
+
+00:09:05.524 --> 00:09:11.390
+Requirement five says, in the overload state, the elevator shall ignore that button press.
+
+00:09:11.740 --> 00:09:13.985
+So, is there a conflict here?
+
+00:09:13.985 --> 00:09:19.712
+An LLM can read the whole list and check the requirements for consistency.
+
+00:09:19.712 --> 00:09:22.420
+One study tested this with ChatGPT.
+
+00:09:23.020 --> 00:09:26.412
+Another study compared LLMs with human experts.
+
+00:09:26.412 --> 00:09:34.060
+They rated requirements documents on qualities like: unambiguous, understandable, correct, and verifiable.
+
+00:09:34.410 --> 00:09:38.170
+GPT-4's ratings were comparable to the human ratings.
+
+00:09:38.520 --> 00:09:41.759
+In industry, these ideas form a full pipeline.
+
+00:09:41.759 --> 00:09:48.025
+One toolchain for automotive requirements turns natural language into structured English,
+
+00:09:48.025 --> 00:09:52.320
+then into a formal timed logic, and runs a consistency check.
+
+00:09:52.670 --> 00:09:57.359
+The inconsistent requirements go to a human, who evaluates them,
+
+00:09:57.359 --> 00:09:59.630
+and improves the original text.
+
+00:10:00.400 --> 00:10:02.840
+The 5th activity is management.
+
+00:10:02.840 --> 00:10:07.720
+Here, AI refines and adapts requirements as the world changes.
+
+00:10:08.070 --> 00:10:14.045
+For example, when a law is revised, the requirements built on it must change too.
+
+00:10:14.045 --> 00:10:19.430
+One method compares the old and new versions of a legal text in 4 layers.
+
+00:10:19.780 --> 00:10:25.258
+After pre-processing, an LLM identifies textual changes: what words changed.
+
+00:10:25.258 --> 00:10:28.646
+Then semantic changes: what the meaning now is.
+
+00:10:28.646 --> 00:10:33.980
+And finally, deontic changes: what is now required, allowed, or forbidden.
+
+00:10:34.330 --> 00:10:38.530
+Management also means tracking dependencies across features.
+
+00:10:38.530 --> 00:10:40.770
+One system builds a feature map.
+
+00:10:41.120 --> 00:10:45.958
+A business analyst agent and an architect agent design the overall model.
+
+00:10:45.958 --> 00:10:50.266
+A feature extractor and a feature planner then list the features,
+
+00:10:50.266 --> 00:10:52.320
+and the order to build them in.
+
+00:10:52.670 --> 00:10:58.188
+For a timer app, the map links create a timer, start, pause, resume, and history.
+
+00:10:58.188 --> 00:11:02.070
+Programmer agents then build the app, feature by feature.
+
+00:11:02.420 --> 00:11:09.540
+And that closes the cycle: elicitation, modeling, specification, validation, and management.
+
+00:11:10.334 --> 00:11:13.534
+Now, what are the strengths and weaknesses of all this?
+
+00:11:14.084 --> 00:11:15.379
+Here are 2 views.
+
+00:11:15.379 --> 00:11:22.084
+One says: in AI-assisted software engineering, requirements are the most important part.
+
+00:11:22.434 --> 00:11:25.698
+The other says: we don't need requirements anymore,
+
+00:11:25.698 --> 00:11:28.194
+because code can be generated directly.
+
+00:11:28.544 --> 00:11:30.937
+Let's look at the strengths first.
+
+00:11:30.937 --> 00:11:33.824
+Requirements make us think before we act.
+
+00:11:34.174 --> 00:11:38.136
+They put us inside a proper software engineering life cycle,
+
+00:11:38.136 --> 00:11:39.854
+instead of one big prompt.
+
+00:11:40.204 --> 00:11:42.342
+And they navigate AI agents.
+
+00:11:42.342 --> 00:11:48.604
+A clear requirement tells the agent where to go, and tells us when it has arrived.
+
+00:11:49.401 --> 00:11:51.080
+Now the weaknesses.
+
+00:11:51.080 --> 00:11:54.881
+First, informal language creates ambiguity.
+
+00:11:55.231 --> 00:12:00.751
+Consider this requirement: insufficient user balance, reject transactions.
+
+00:12:01.101 --> 00:12:03.215
+What does insufficient mean?
+
+00:12:03.215 --> 00:12:08.122
+Is the balance less than the amount, or less than or equal to it?
+
+00:12:08.122 --> 00:12:12.501
+An agent has to guess, and 2 agents may guess differently.
+
+00:12:13.051 --> 00:12:15.141
+Second, requirements change.
+
+00:12:15.141 --> 00:12:19.769
+In the classic waterfall model, we analyze requirements first,
+
+00:12:19.769 --> 00:12:22.531
+then design, code, test, and deliver.
+
+00:12:22.881 --> 00:12:25.583
+But in practice, we keep going back.
+
+00:12:25.583 --> 00:12:29.561
+We need to revise the specifications again and again.
+
+00:12:30.161 --> 00:12:32.430
+And that leads to the last weakness:
+
+00:12:32.430 --> 00:12:36.401
+a lot of work switching between writing specs and writing code.
+
+00:12:36.751 --> 00:12:42.191
+A spec-driven project can have a requirements file, an API contract,
+
+00:12:42.191 --> 00:12:45.871
+a data model, a plan, a spec, and a task list.
+
+00:12:45.871 --> 00:12:50.031
+Every code change may mean updating several of them.
+
+00:12:50.801 --> 00:12:52.041
+Let's sum up.
+
+00:12:52.391 --> 00:12:55.244
+Vibe coding is fine for a toy project.
+
+00:12:55.244 --> 00:13:00.951
+But real systems need software engineering, and it starts with requirements.
+
+00:13:01.301 --> 00:13:07.210
+Requirement engineering is a cycle: elicitation, modeling, specification,
+
+00:13:07.210 --> 00:13:09.396
+validation, and management.
+
+00:13:09.396 --> 00:13:11.501
+AI can help at every step.
+
+00:13:11.851 --> 00:13:17.496
+Formal languages, such as LTL and Lean 4, make requirements precise enough
+
+00:13:17.496 --> 00:13:19.251
+for a machine to check.
+
+00:13:19.601 --> 00:13:24.403
+But natural language is ambiguous, and requirements keep changing,
+
+00:13:24.403 --> 00:13:28.041
+so keeping specs and code in step takes real work.
+
+00:13:28.391 --> 00:13:30.125
+Here's something to try.
+
+00:13:30.125 --> 00:13:35.112
+Give an LLM the 5 elevator requirements, and ask it to find conflicts
+
+00:13:35.112 --> 00:13:36.558
+and ambiguous words.
+
+00:13:36.558 --> 00:13:38.871
+Do you agree with what it finds?
+
+00:13:39.668 --> 00:13:41.348
+That's all for this lecture.
+
+00:13:41.348 --> 00:13:42.728
+Thank you for watching.
+
+00:13:42.728 --> 00:13:47.468
+In the next class, Requirements Exercise, you'll put these ideas into practice.
+
